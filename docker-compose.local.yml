@@ -1,0 +1,17 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: gardenquest-postgres-local
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: gardenquest_dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - gardenquest-postgres-data:/var/lib/postgresql/data
+      - ./backend/database/supabase-schema.sql:/docker-entrypoint-initdb.d/001-supabase-schema.sql:ro
+
+volumes:
+  gardenquest-postgres-data:
