@@ -28,7 +28,7 @@ load_env_file() {
   done < "$env_file"
 }
 
-ENV_FILE=${ENV_FILE:-${3:-""}}
+ENV_FILE=${1:-${ENV_FILE:-""}}
 
 if [ -z "$ENV_FILE" ]; then
   if [ -f .env.production ]; then
@@ -48,14 +48,16 @@ if [ -n "$ENV_FILE" ]; then
   load_env_file "$ENV_FILE"
 fi
 
-PROJECT_ID=${1:-${PROJECT_ID:-""}}
-REGION=${2:-${REGION:-"southamerica-east1"}}
+PROJECT_ID=${3:-${PROJECT_ID:-""}}
+REGION=${4:-${REGION:-"southamerica-east1"}}
 APP_ENV=${APP_ENV:-"production"}
 
 if [ -z "$PROJECT_ID" ]; then
   echo "Error: PROJECT_ID is required. Set it in .env or pass as first argument."
   exit 1
 fi
+
+TARGET=${2:-${TARGET:-"all"}}
 
 BACKEND_SERVICE_NAME=${BACKEND_SERVICE_NAME:-"gardenquest-api"}
 FRONTEND_SERVICE_NAME=${FRONTEND_SERVICE_NAME:-"gardenquest-web"}
@@ -102,12 +104,17 @@ echo "----------------------------------"
 echo "  Garden Quest -- Cloud Run Deploy"
 echo "  Project: $PROJECT_ID"
 echo "  Region:  $REGION"
+echo "  Target:  $TARGET"
 echo "----------------------------------"
 
 gcloud config set project "$PROJECT_ID"
 
-echo ""
-echo "Deploying Backend..."
+BACKEND_URL=""
+FRONTEND_URL=""
+
+if [ "$TARGET" = "all" ] || [ "$TARGET" = "backend" ]; then
+  echo ""
+  echo "Deploying Backend..."
 cd backend
 
 BACKEND_ENV_VARS=(
@@ -185,36 +192,54 @@ if [ ${#BACKEND_SECRETS[@]} -gt 0 ]; then
   )
 fi
 
-"${BACKEND_DEPLOY_CMD[@]}"
+  BACKEND_URL=$(gcloud run services describe "$BACKEND_SERVICE_NAME" --region "$REGION" --format='value(status.url)')
+  echo "Backend: $BACKEND_URL"
+  cd ..
+else
+  echo "Skipping Backend deploy. Fetching existing Backend URL..."
+  BACKEND_URL=$(gcloud run services describe "$BACKEND_SERVICE_NAME" --region "$REGION" --format='value(status.url)')
+  if [ -z "$BACKEND_URL" ]; then
+    echo "Error: Could not find existing Backend service. Please deploy 'all' or 'backend' first."
+    exit 1
+  fi
+  echo "Backend (existing): $BACKEND_URL"
+fi
 
-BACKEND_URL=$(gcloud run services describe "$BACKEND_SERVICE_NAME" --region "$REGION" --format='value(status.url)')
-echo "Backend: $BACKEND_URL"
-cd ..
-
-echo ""
-echo "Deploying Frontend..."
+if [ "$TARGET" = "all" ] || [ "$TARGET" = "frontend" ]; then
+  echo ""
+  echo "Deploying Frontend..."
 cd frontend
 
 FRONTEND_ENV_VARS="BACKEND_UPSTREAM=$BACKEND_URL"
 
-gcloud run deploy "$FRONTEND_SERVICE_NAME" \
-  --source . \
-  --region "$REGION" \
-  --platform managed \
-  --allow-unauthenticated \
-  --port 8080 \
-  --memory 128Mi \
-  --cpu 1 \
-  --min-instances 0 \
-  --max-instances 5 \
-  --set-env-vars "$FRONTEND_ENV_VARS"
+  gcloud run deploy "$FRONTEND_SERVICE_NAME" \
+    --source . \
+    --region "$REGION" \
+    --platform managed \
+    --allow-unauthenticated \
+    --port 8080 \
+    --memory 128Mi \
+    --cpu 1 \
+    --min-instances 0 \
+    --max-instances 5 \
+    --set-env-vars "$FRONTEND_ENV_VARS"
 
-FRONTEND_URL=$(gcloud run services describe "$FRONTEND_SERVICE_NAME" --region "$REGION" --format='value(status.url)')
-echo "Frontend: $FRONTEND_URL"
-cd ..
+  FRONTEND_URL=$(gcloud run services describe "$FRONTEND_SERVICE_NAME" --region "$REGION" --format='value(status.url)')
+  echo "Frontend: $FRONTEND_URL"
+  cd ..
+else
+  echo "Skipping Frontend deploy. Fetching existing Frontend URL..."
+  FRONTEND_URL=$(gcloud run services describe "$FRONTEND_SERVICE_NAME" --region "$REGION" --format='value(status.url)')
+  if [ -z "$FRONTEND_URL" ]; then
+    echo "Warning: Could not find existing Frontend service. Backend callback update might fail."
+  else
+    echo "Frontend (existing): $FRONTEND_URL"
+  fi
+fi
 
-echo ""
-echo "Updating Backend callback and frontend URL..."
+if [ -n "$FRONTEND_URL" ]; then
+  echo ""
+  echo "Updating Backend callback and frontend URL..."
 FINAL_BACKEND_ENV_VARS="FRONTEND_URL=$FRONTEND_URL,GOOGLE_REDIRECT_URI=$FRONTEND_URL/auth/callback,COOKIE_SAME_SITE=Lax"
 
 gcloud run services update "$BACKEND_SERVICE_NAME" \

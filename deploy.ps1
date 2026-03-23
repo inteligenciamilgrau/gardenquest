@@ -1,8 +1,11 @@
 param (
-    [Parameter(Mandatory=$false)]
-    [string]$ProjectId = "",
-
+    [Parameter(Position=0)]
     [string]$EnvFile = "",
+
+    [Parameter(Position=1)]
+    [string]$Target = "all",
+
+    [string]$ProjectId = "",
     [string]$Region = "",
     [string]$AppEnv = "",
     [string]$GoogleClientId = "",
@@ -114,12 +117,17 @@ Write-Host "----------------------------------"
 Write-Host "  Garden Quest -- Cloud Run Deploy"
 Write-Host "  Project: $ProjectId"
 Write-Host "  Region:  $Region"
+Write-Host "  Target:  $Target"
 Write-Host "----------------------------------"
 
 gcloud config set project $ProjectId
 
-Write-Host ""
-Write-Host "Deploying Backend..."
+$BackendUrl = ""
+$FrontendUrl = ""
+
+if ($Target -eq "all" -or $Target -eq "backend") {
+    Write-Host ""
+    Write-Host "Deploying Backend..."
 Push-Location backend
 
 $BackendEnvVarList = @(
@@ -209,12 +217,21 @@ if ($BackendSecretList.Count -gt 0) {
 
 & gcloud @BackendDeployArgs
 
-$BackendUrl = gcloud run services describe $BackendServiceName --region $Region --format='value(status.url)'
-Write-Host "Backend: $BackendUrl"
-Pop-Location
+    $BackendUrl = gcloud run services describe $BackendServiceName --region $Region --format='value(status.url)'
+    Write-Host "Backend: $BackendUrl"
+    Pop-Location
+} else {
+    Write-Host "Skipping Backend deploy. Fetching existing Backend URL..."
+    $BackendUrl = gcloud run services describe $BackendServiceName --region $Region --format='value(status.url)'
+    if (-not $BackendUrl) {
+        throw "Could not find existing Backend service. Please deploy 'all' or 'backend' first."
+    }
+    Write-Host "Backend (existing): $BackendUrl"
+}
 
-Write-Host ""
-Write-Host "Deploying Frontend..."
+if ($Target -eq "all" -or $Target -eq "frontend") {
+    Write-Host ""
+    Write-Host "Deploying Frontend..."
 Push-Location frontend
 
 $FrontendEnvVars = "BACKEND_UPSTREAM=$BackendUrl"
@@ -231,21 +248,32 @@ gcloud run deploy $FrontendServiceName `
     --max-instances 5 `
     --set-env-vars $FrontendEnvVars
 
-$FrontendUrl = gcloud run services describe $FrontendServiceName --region $Region --format='value(status.url)'
-Write-Host "Frontend: $FrontendUrl"
-Pop-Location
+    $FrontendUrl = gcloud run services describe $FrontendServiceName --region $Region --format='value(status.url)'
+    Write-Host "Frontend: $FrontendUrl"
+    Pop-Location
+} else {
+    Write-Host "Skipping Frontend deploy. Fetching existing Frontend URL..."
+    $FrontendUrl = gcloud run services describe $FrontendServiceName --region $Region --format='value(status.url)'
+    if (-not $FrontendUrl) {
+        Write-Warning "Could not find existing Frontend service. Backend callback update might fail."
+    } else {
+        Write-Host "Frontend (existing): $FrontendUrl"
+    }
+}
 
-Write-Host ""
-Write-Host "Updating Backend callback and frontend URL..."
+if ($FrontendUrl) {
+    Write-Host ""
+    Write-Host "Updating Backend callback and frontend URL..."
 $FinalBackendEnvVars = @(
     "FRONTEND_URL=$FrontendUrl",
     "GOOGLE_REDIRECT_URI=$FrontendUrl/auth/callback",
     "COOKIE_SAME_SITE=Lax"
 ) -join ","
 
-gcloud run services update $BackendServiceName `
-    --region $Region `
-    --update-env-vars $FinalBackendEnvVars
+    gcloud run services update $BackendServiceName `
+        --region $Region `
+        --update-env-vars $FinalBackendEnvVars
+}
 
 Write-Host ""
 Write-Host "----------------------------------"

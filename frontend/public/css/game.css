@@ -28,6 +28,7 @@ body {
     display: block;
     width: 100vw;
     height: 100vh;
+    touch-action: none;
 }
 
 .hud-top {
@@ -43,7 +44,7 @@ body {
     background: var(--hud-bg);
     backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--hud-border);
-    z-index: 100;
+    z-index: 300;
 }
 
 .hud-player {
@@ -858,12 +859,16 @@ body {
 
 .mobile-controls {
     position: fixed;
-    left: 16px;
-    bottom: 24px;
+    inset: 0;
+    pointer-events: none;
     z-index: 160;
     touch-action: none;
     user-select: none;
     -webkit-user-select: none;
+}
+
+.mobile-controls > * {
+    pointer-events: auto;
 }
 
 .mobile-controls[hidden] {
@@ -871,9 +876,54 @@ body {
 }
 
 .mobile-dpad {
-    position: relative;
+    position: absolute;
+    left: 24px;
+    bottom: 24px;
     width: 164px;
     height: 164px;
+}
+
+.mobile-actions {
+    position: absolute;
+    right: 24px;
+    bottom: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 16px;
+}
+
+.mobile-action-btn {
+    width: 68px;
+    height: 68px;
+    border: 2px solid rgba(56, 189, 126, 0.4);
+    border-radius: 50%;
+    background: rgba(10, 15, 26, 0.88);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    color: #f0fdf4;
+    font-family: 'Outfit', sans-serif;
+    font-size: 20px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: none;
+    transition: transform 0.1s ease, background 0.1s ease;
+}
+
+.mobile-action-btn.active {
+    background: rgba(56, 189, 126, 0.3);
+    border-color: rgba(56, 189, 126, 0.8);
+    transform: scale(0.92);
+}
+
+.mobile-action-jump {
+    width: 90px;
+    height: 56px;
+    border-radius: 20px;
+    font-size: 16px;
+    margin-right: 12px;
 }
 
 .mobile-move-btn {
@@ -957,9 +1007,37 @@ body {
 
 @media (max-width: 720px) {
     .hud-top {
-        padding: 12px 16px;
-        align-items: flex-start;
-        flex-wrap: wrap;
+        padding: 4px 12px;
+        height: 60px;
+        align-items: center;
+        flex-wrap: nowrap;
+        gap: 8px;
+    }
+
+    .hud-player {
+        flex: 1;
+        min-width: 0;
+        gap: 8px;
+    }
+
+    .hud-name {
+        font-size: 14px;
+        max-width: 120px;
+    }
+
+    .hud-actions {
+        flex-shrink: 0;
+        gap: 6px;
+    }
+
+    .hud-menu-tab {
+        padding: 6px 10px;
+        font-size: 11px;
+    }
+
+    .btn-logout {
+        padding: 6px 12px;
+        font-size: 11px;
     }
 
     .hud-actions {
@@ -977,11 +1055,12 @@ body {
     }
 
     .leaderboard-panel {
-        top: 78px;
+        top: 72px;
         left: 12px;
         right: 12px;
         width: auto;
-        padding: 12px 12px 8px;
+        z-index: 200;
+        padding: 10px 12px;
     }
 
     .leaderboard-sections {
@@ -989,13 +1068,55 @@ body {
     }
 
     .mobile-controls {
+        inset: 0;
+        z-index: 250;
+    }
+
+    .mobile-dpad {
         left: 12px;
         bottom: 14px;
     }
 
+    .mobile-actions {
+        right: 12px;
+        bottom: 14px;
+        gap: 10px;
+    }
+
+    .mobile-action-btn {
+        width: 60px;
+        height: 60px;
+    }
+
+    .mobile-action-jump {
+        width: 80px;
+        height: 50px;
+    }
+
     .hud-inventory {
-        bottom: 16px;
-        padding: 12px 16px;
+        bottom: 12px;
+        padding: 8px 12px;
+        gap: 8px;
+        border-radius: 12px;
+    }
+
+    .inv-slot {
+        min-width: 44px;
+        gap: 2px;
+    }
+
+    .inv-icon {
+        font-size: 20px;
+    }
+
+    .inv-label {
+        font-size: 10px;
+        font-weight: 600;
+        opacity: 0.8;
+    }
+
+    .inv-value {
+        font-size: 14px;
     }
 
     .action-prompt {
@@ -1011,12 +1132,18 @@ body {
         right: 12px;
         left: 12px;
         top: 74px;
-        bottom: 148px;
+        bottom: 220px;
         width: auto;
+        pointer-events: none;
+    }
+
+    .chat-widget > * {
+        pointer-events: auto;
     }
 
     .chat-widget.minimized {
         top: auto;
+        bottom: 220px;
     }
 
     .chat-feed {

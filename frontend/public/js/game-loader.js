@@ -6,7 +6,7 @@ const gameScriptSources = [
     'js/player.js?v=21',
     'js/world.js?v=30',
     'js/actions.js?v=18',
-    'js/game.js?v=46',
+    'js/game.js?v=55',
 ];
 
 for (const src of gameScriptSources) {

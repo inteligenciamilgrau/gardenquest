@@ -33,7 +33,7 @@
     const PROFILE_STORAGE_KEY_PREFIX = 'garden-quest-player-profile:';
     const CHAT_WIDGET_STORAGE_KEY = 'garden-quest-player-chat:minimized';
     const LEADERBOARD_PANEL_STORAGE_KEY = 'garden-quest-leaderboard:minimized';
-    const TOUCH_MOVEMENT_KEYS = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright', 'shift']);
+    const TOUCH_MOVEMENT_KEYS = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright', 'shift', 'e', 'f', ' ']);
     const isTouchDevice = window.matchMedia('(pointer: coarse)').matches || Number(navigator.maxTouchPoints || 0) > 0;
 
     const hudName = document.getElementById('hudName');
@@ -450,7 +450,7 @@
             return;
         }
 
-        const buttons = mobileControls.querySelectorAll('.mobile-move-btn[data-key]');
+        const buttons = mobileControls.querySelectorAll('button[data-key]');
 
         buttons.forEach((button) => {
             const movementKey = String(button.dataset.key || '').toLowerCase();
@@ -475,6 +475,7 @@
 
             button.addEventListener('pointerdown', (event) => {
                 event.preventDefault();
+                event.stopPropagation();
 
                 if (isChatOpen || isProfileOpen || isCommandsOpen || stateSync.selfStatus === 'dead') {
                     return;
@@ -484,15 +485,22 @@
                 keys[movementKey] = true;
                 button.classList.add('active');
 
+                if (movementKey === 'e') handlePrimaryActionInput();
+                if (movementKey === 'f') handleSecondaryActionInput();
+                if (movementKey === ' ') jumpLocalPlayer();
+
                 if (typeof button.setPointerCapture === 'function') {
                     button.setPointerCapture(event.pointerId);
                 }
 
-                flushMovementInput();
+                if (movementKey !== 'e' && movementKey !== 'f' && movementKey !== ' ') {
+                    flushMovementInput();
+                }
             });
 
             button.addEventListener('pointerup', (event) => {
                 event.preventDefault();
+                event.stopPropagation();
                 releasePointer(event.pointerId);
             });
 
@@ -1514,6 +1522,7 @@
     let lastSoccerGoalSequence = null;
     let soccerBallCarrierId = '';
     const activeTouchMovementPointers = new Map();
+    const activeTouchLookPointers = new Map();
 
     applyRuntimeSettings(initialSettings);
 
@@ -1535,8 +1544,9 @@
         });
 
         activeTouchMovementPointers.clear();
+        activeTouchLookPointers.clear();
 
-        document.querySelectorAll('.mobile-move-btn.active').forEach((button) => {
+        document.querySelectorAll('.mobile-move-btn.active, .mobile-action-btn.active').forEach((button) => {
             button.classList.remove('active');
         });
     }
@@ -2382,6 +2392,40 @@
         stateSync.introBlend = 0;
     }
 
+    function handleTouchLookStart(event) {
+        if (!isTouchDevice || isChatOpen || isProfileOpen || isCommandsOpen) return;
+        if (event.target.closest('.mobile-controls') || event.target.closest('.hud-top')) return;
+
+        if (event.cancelable) event.preventDefault();
+
+        activeTouchLookPointers.set(event.pointerId, {
+            x: event.clientX,
+            y: event.clientY
+        });
+    }
+
+    function handleTouchLookMove(event) {
+        const lastPos = activeTouchLookPointers.get(event.pointerId);
+        if (!lastPos) return;
+
+        if (event.cancelable) event.preventDefault();
+
+        const deltaX = event.clientX - lastPos.x;
+        const deltaY = event.clientY - lastPos.y;
+
+        const sensitivity = 0.0045;
+        cameraState.yaw -= deltaX * sensitivity;
+        cameraState.pitch = clamp(cameraState.pitch - deltaY * sensitivity, cameraState.minPitch, cameraState.maxPitch);
+        stateSync.introBlend = 0;
+
+        lastPos.x = event.clientX;
+        lastPos.y = event.clientY;
+    }
+
+    function handleTouchLookEnd(event) {
+        activeTouchLookPointers.delete(event.pointerId);
+    }
+
     function zoomCamera(event) {
         cameraState.distance = clamp(
             cameraState.distance + event.deltaY * 0.01,
@@ -2741,9 +2785,13 @@
         handlePrimaryActionInput();
     });
     canvas.addEventListener('click', requestPointerLock);
+    canvas.addEventListener('pointerdown', handleTouchLookStart);
     document.addEventListener('pointerlockchange', handlePointerLockChange);
     document.addEventListener('pointerlockerror', handlePointerLockError);
     window.addEventListener('mousemove', moveLockedCamera);
+    window.addEventListener('pointermove', handleTouchLookMove);
+    window.addEventListener('pointerup', handleTouchLookEnd);
+    window.addEventListener('pointercancel', handleTouchLookEnd);
     canvas.addEventListener('wheel', zoomCamera, { passive: false });
 
     window.addEventListener('resize', () => {
