@@ -372,7 +372,7 @@ const config = {
   AI_GAME_ENABLED: readBooleanEnv('AI_GAME_ENABLED', true),
   AI_AGENT_NAME: readEnv('AI_AGENT_NAME', { defaultValue: 'Jardineiro IA' }),
   AI_DECISION_INTERVAL_MS: readIntegerEnv('AI_DECISION_INTERVAL_MS', 4000),
-  AI_SIMULATION_TICK_MS: readIntegerEnv('AI_SIMULATION_TICK_MS', 250),
+  AI_SIMULATION_TICK_MS: readIntegerEnv('AI_SIMULATION_TICK_MS', 50),
   AI_MOVE_SPEED: readFloatEnv('AI_MOVE_SPEED', 3.5),
   AI_SPEECH_MAX_CHARS: readIntegerEnv('AI_SPEECH_MAX_CHARS', 80),
   AI_REASONING_EFFORT: readEnv('OPENAI_REASONING_EFFORT', { defaultValue: 'low' }),

@@ -54,6 +54,15 @@ function clonePoint(point) {
     };
 }
 
+function cloneRect(rect) {
+    return {
+        minX: Number(rect?.minX) || 0,
+        maxX: Number(rect?.maxX) || 0,
+        minZ: Number(rect?.minZ) || 0,
+        maxZ: Number(rect?.maxZ) || 0,
+    };
+}
+
 function buildHouseFootprint(layout = HOUSE_LAYOUT, padding = 0) {
     const halfWidth = layout.width / 2;
     const halfDepth = layout.depth / 2;
@@ -315,25 +324,72 @@ function buildWallSpans(rangeStart, rangeEnd, gaps = []) {
     return spans;
 }
 
-function addCollisionRect(rects, minX, maxX, minZ, maxZ) {
+function addCollisionRect(rects, minX, maxX, minZ, maxZ, options = {}) {
     if ((maxX - minX) < 0.01 || (maxZ - minZ) < 0.01) {
         return;
     }
 
-    rects.push({ minX, maxX, minZ, maxZ });
+    rects.push({ minX, maxX, minZ, maxZ, ...options });
 }
 
 function buildHouseWallCollisionBoxes(layout = HOUSE_LAYOUT) {
-    const halfDoorWidth = layout.doorWidth / 2;
-    const wallThickness = layout.wallThickness;
+    const halfDoorWidth = (Number(layout.doorWidth) || 3.4) / 2;
+    const wallThickness = Number(layout.wallThickness) || 0.55;
     const metrics = buildHouseInteriorMetrics(layout);
     const rects = [];
 
+    // --- OUTER WALLS (Rendered and Physics) ---
+    // North wall
     addCollisionRect(rects, metrics.westEdge, metrics.eastEdge, metrics.northEdge - wallThickness, metrics.northEdge);
+    // West wall
     addCollisionRect(rects, metrics.westEdge, metrics.westEdge + wallThickness, metrics.southEdge, metrics.northEdge);
+    // East wall
     addCollisionRect(rects, metrics.eastEdge - wallThickness, metrics.eastEdge, metrics.southEdge, metrics.northEdge);
+    // South wall (Outer face, near the main gate)
     addCollisionRect(rects, metrics.westEdge, layout.position.x - halfDoorWidth, metrics.southEdge, metrics.southEdge + wallThickness);
     addCollisionRect(rects, layout.position.x + halfDoorWidth, metrics.eastEdge, metrics.southEdge, metrics.southEdge + wallThickness);
+
+    // Note: Interior dividers and partitions are omitted to maintain the open castle layout.
+    // Throneroom and wing partitions can be added here if needed in the future.
+
+    // --- TOWER COLLISION WALLS (Physics ONLY, Hidden from rendering loop) ---
+    // These are already rendered as cylinders in _createHouse, so we only need physics.
+    const towerIngetX = 3.0;
+    const towerInsetZ = 3.05;
+    const tRadius = 2.7;
+    const towerHalfWidth = layout.width / 2;
+    const towerSouthEdge = layout.position.z - (layout.depth / 2);
+    const TowerWestX = layout.position.x - towerHalfWidth + towerIngetX;
+    const TowerEastX = layout.position.x + towerHalfWidth - towerIngetX;
+    const TowerZ = towerSouthEdge + towerInsetZ;
+
+    const towers = [
+        { id: 'west', x: TowerWestX, z: TowerZ, doorSide: 'east' },
+        { id: 'east', x: TowerEastX, z: TowerZ, doorSide: 'west' }
+    ];
+
+    towers.forEach(t => {
+        const rColl = tRadius + 0.12; 
+        const tDoorWidth = 1.62; // Slightly wider for ease of entry
+        const tDHalf = tDoorWidth / 2;
+        const hOpt = { hidden: true };
+
+        // North, South side wall segments
+        addCollisionRect(rects, t.x - rColl, t.x + rColl, t.z + rColl - wallThickness, t.z + rColl, hOpt); // Top
+        addCollisionRect(rects, t.x - rColl, t.x + rColl, t.z - rColl, t.z - rColl + wallThickness, hOpt); // Bottom
+        
+        if (t.doorSide === 'east') {
+            addCollisionRect(rects, t.x - rColl, t.x - rColl + wallThickness, t.z - rColl, t.z + rColl, hOpt); // Outer wall
+            // Wall facing hall (door side)
+            addCollisionRect(rects, t.x + rColl - wallThickness, t.x + rColl, t.z - rColl, t.z - tDHalf, hOpt);
+            addCollisionRect(rects, t.x + rColl - wallThickness, t.x + rColl, t.z + tDHalf, t.z + rColl, hOpt);
+        } else {
+            addCollisionRect(rects, t.x + rColl - wallThickness, t.x + rColl, t.z - rColl, t.z + rColl, hOpt); // Outer wall
+            // Wall facing hall (door side)
+            addCollisionRect(rects, t.x - rColl, t.x - rColl + wallThickness, t.z - rColl, t.z - tDHalf, hOpt);
+            addCollisionRect(rects, t.x - rColl, t.x - rColl + wallThickness, t.z + tDHalf, t.z + rColl, hOpt);
+        }
+    });
 
     return rects;
 }
@@ -443,7 +499,7 @@ function buildSoccerGrandstandStepSurfaces(fieldState = DEFAULT_SOCCER_FIELD_LAY
 }
 
 class World {
-    constructor(scene) {
+    constructor(scene, staticWorld = {}) {
         this.scene = scene;
         this.trees = [];
         this.apples = [];
@@ -460,28 +516,68 @@ class World {
         this.soccerBallPossessed = false;
         this.soccerBallCarrierState = null;
         this.soccerFieldMetrics = null;
-        this.soccerGrandstandCollisionBoxes = buildSoccerGrandstandCollisionBoxes();
-        this.soccerGrandstandStepSurfaces = buildSoccerGrandstandStepSurfaces();
         this.soccerFieldSignature = '';
         this.soccerGoalBanner = null;
         this.soccerGoalBannerVisibleUntil = 0;
-        this.appleOffsets = [
-            { x: 1.55, y: 3.85, z: 0.75 },
-            { x: -1.35, y: 4.15, z: 0.95 },
-            { x: 0.95, y: 4.55, z: -1.3 },
-            { x: -0.35, y: 4.85, z: -0.95 },
-            { x: 0.25, y: 3.75, z: 1.45 },
-            { x: -1.55, y: 4.45, z: -0.15 },
-        ];
-        this.lakePosition = new THREE.Vector3(0, 0, 0);
-        this.lakeRadius = 6;
-        this.bounds = 45;
-        this.houseLayout = HOUSE_LAYOUT;
-        this.houseWallCollisionBoxes = buildHouseWallCollisionBoxes(this.houseLayout);
+        this.appleOffsets = Array.isArray(staticWorld?.appleLayout) && staticWorld.appleLayout.length > 0
+            ? staticWorld.appleLayout.map((point) => clonePoint(point))
+            : [
+                { x: 1.55, y: 3.85, z: 0.75 },
+                { x: -1.35, y: 4.15, z: 0.95 },
+                { x: 0.95, y: 4.55, z: -1.3 },
+                { x: -0.35, y: 4.85, z: -0.95 },
+                { x: 0.25, y: 3.75, z: 1.45 },
+                { x: -1.55, y: 4.45, z: -0.15 },
+            ];
+        this.treeLayout = Array.isArray(staticWorld?.trees) && staticWorld.trees.length > 0
+            ? staticWorld.trees.map((treeState, index) => ({
+                id: String(treeState?.id || `tree-${index}`),
+                position: clonePoint(treeState?.position),
+            }))
+            : TREE_POSITIONS.map((position, index) => ({
+                id: `tree-${index}`,
+                position: { x: position.x, y: 0, z: position.z },
+            }));
+        this.lakePosition = new THREE.Vector3(
+            Number(staticWorld?.lake?.position?.x) || 0,
+            Number(staticWorld?.lake?.position?.y) || 0,
+            Number(staticWorld?.lake?.position?.z) || 0
+        );
+        this.lakeRadius = Number(staticWorld?.lake?.radius) || 6;
+        this.bounds = Number.isFinite(staticWorld?.bounds) && staticWorld.bounds > 0
+            ? staticWorld.bounds
+            : 45;
+        this.houseLayout = {
+            ...HOUSE_LAYOUT,
+            ...(staticWorld?.house
+                ? {
+                    position: clonePoint(staticWorld.house.position),
+                    width: Number(staticWorld.house.width) || HOUSE_LAYOUT.width,
+                    depth: Number(staticWorld.house.depth) || HOUSE_LAYOUT.depth,
+                    wallHeight: Number(staticWorld.house.wallHeight) || HOUSE_LAYOUT.wallHeight,
+                    wallThickness: Number(staticWorld.house.wallThickness) || HOUSE_LAYOUT.wallThickness,
+                    doorWidth: Number(staticWorld.house.doorWidth) || HOUSE_LAYOUT.doorWidth,
+                    doorHeight: Number(staticWorld.house.doorHeight) || HOUSE_LAYOUT.doorHeight,
+                }
+                : {}),
+        };
+        this.houseWallCollisionBoxes = Array.isArray(staticWorld?.house?.collisionBoxes) && staticWorld.house.collisionBoxes.length > 0
+            ? staticWorld.house.collisionBoxes.map((rect) => cloneRect(rect))
+            : buildHouseWallCollisionBoxes(this.houseLayout);
         this.houseTowerElevators = buildHouseTowerElevators(this.houseLayout);
         this.houseStepSurfaces = buildHouseStepSurfaces(this.houseLayout);
-        this.soccerGrandstandCollisionBoxes = buildSoccerGrandstandCollisionBoxes();
-        this.soccerGrandstandStepSurfaces = buildSoccerGrandstandStepSurfaces();
+        this.soccerFieldState = staticWorld?.soccerField
+            ? {
+                ...DEFAULT_SOCCER_FIELD_LAYOUT,
+                ...staticWorld.soccerField,
+                position: clonePoint(staticWorld.soccerField.position),
+            }
+            : {
+                ...DEFAULT_SOCCER_FIELD_LAYOUT,
+                position: clonePoint(DEFAULT_SOCCER_FIELD_LAYOUT.position),
+            };
+        this.soccerGrandstandCollisionBoxes = buildSoccerGrandstandCollisionBoxes(this.soccerFieldState);
+        this.soccerGrandstandStepSurfaces = buildSoccerGrandstandStepSurfaces(this.soccerFieldState);
 
         this._createGround();
         this._createSky();
@@ -877,19 +973,28 @@ class World {
     }
 
     syncSoccerState(soccerState) {
-        if (!soccerState?.field || !soccerState?.ball) {
+        if (!soccerState?.ball) {
             return;
         }
 
-        const nextSignature = this._getSoccerFieldSignature(soccerState.field);
+        const fieldState = soccerState?.field || this.soccerFieldState || DEFAULT_SOCCER_FIELD_LAYOUT;
+        this.soccerFieldState = {
+            ...DEFAULT_SOCCER_FIELD_LAYOUT,
+            ...fieldState,
+            position: clonePoint(fieldState.position || DEFAULT_SOCCER_FIELD_LAYOUT.position),
+        };
+        const nextSignature = this._getSoccerFieldSignature(this.soccerFieldState);
         if (!this.soccerFieldGroup || this.soccerFieldSignature !== nextSignature) {
             this._disposeSoccerField();
-            this._createSoccerField(soccerState);
+            this._createSoccerField({
+                ...soccerState,
+                field: this.soccerFieldState,
+            });
         }
 
-        this.soccerFieldMetrics = this._getSoccerFieldMetrics(soccerState.field, soccerState.ball);
-        this.soccerGrandstandCollisionBoxes = buildSoccerGrandstandCollisionBoxes(soccerState.field);
-        this.soccerGrandstandStepSurfaces = buildSoccerGrandstandStepSurfaces(soccerState.field);
+        this.soccerFieldMetrics = this._getSoccerFieldMetrics(this.soccerFieldState, soccerState.ball);
+        this.soccerGrandstandCollisionBoxes = buildSoccerGrandstandCollisionBoxes(this.soccerFieldState);
+        this.soccerGrandstandStepSurfaces = buildSoccerGrandstandStepSurfaces(this.soccerFieldState);
         const nextBallY = Number(soccerState?.ball?.position?.y) || Number(soccerState?.ball?.radius) || 0.42;
         this.soccerBallPossessed = Boolean(String(soccerState?.ball?.possessedByActorId || '').trim());
         this.soccerBallTargetPosition.set(
@@ -1123,20 +1228,12 @@ class World {
     }
 
     _createGround() {
-        const groundGeo = new THREE.PlaneGeometry(100, 100, 20, 20);
+        const groundGeo = new THREE.PlaneGeometry(100, 100, 1, 1);
         const groundMat = new THREE.MeshLambertMaterial({ color: 0x4a9e4a });
         const ground = new THREE.Mesh(groundGeo, groundMat);
         ground.rotation.x = -Math.PI / 2;
         ground.receiveShadow = true;
         this.scene.add(ground);
-
-        const vertices = groundGeo.attributes.position;
-        for (let i = 0; i < vertices.count; i++) {
-            const z = vertices.getZ(i);
-            vertices.setZ(i, z + (Math.random() - 0.5) * 0.3);
-        }
-        vertices.needsUpdate = true;
-        groundGeo.computeVertexNormals();
 
         const pathGeo = new THREE.PlaneGeometry(3.8, 24);
         const pathMat = new THREE.MeshLambertMaterial({ color: 0xb99a65 });
@@ -1486,6 +1583,9 @@ class World {
         createBox(width - 6.2, 0.05, depth - 5.2, floorAltMat, 0, 0.11, 0, { castShadow: false });
 
         collisionRects.forEach((rect) => {
+            if (rect.hidden) {
+                return;
+            }
             createBox(
                 rect.maxX - rect.minX,
                 wallHeight,
@@ -1789,7 +1889,7 @@ class World {
         });
         this.lake = new THREE.Mesh(lakeGeo, lakeMat);
         this.lake.rotation.x = -Math.PI / 2;
-        this.lake.position.set(0, 0.05, 0);
+        this.lake.position.set(this.lakePosition.x, this.lakePosition.y + 0.05, this.lakePosition.z);
         this.lake.receiveShadow = true;
         this.scene.add(this.lake);
 
@@ -1797,7 +1897,7 @@ class World {
         const edgeMat = new THREE.MeshLambertMaterial({ color: 0x3a7a3a });
         const edge = new THREE.Mesh(edgeGeo, edgeMat);
         edge.rotation.x = -Math.PI / 2;
-        edge.position.set(0, 0.03, 0);
+        edge.position.set(this.lakePosition.x, this.lakePosition.y + 0.03, this.lakePosition.z);
         this.scene.add(edge);
 
         const rockMat = new THREE.MeshLambertMaterial({ color: 0x888888 });
@@ -1807,9 +1907,9 @@ class World {
             const rockGeo = new THREE.DodecahedronGeometry(0.2 + Math.random() * 0.3, 0);
             const rock = new THREE.Mesh(rockGeo, rockMat);
             rock.position.set(
-                Math.cos(angle) * r,
-                0.1 + Math.random() * 0.15,
-                Math.sin(angle) * r
+                this.lakePosition.x + (Math.cos(angle) * r),
+                this.lakePosition.y + 0.1 + Math.random() * 0.15,
+                this.lakePosition.z + (Math.sin(angle) * r)
             );
             rock.rotation.set(Math.random(), Math.random(), Math.random());
             rock.castShadow = true;
@@ -1818,12 +1918,12 @@ class World {
     }
 
     _createTrees() {
-        TREE_POSITIONS.forEach((pos, index) => {
-            this._createTree(pos.x, pos.z, index);
+        this.treeLayout.forEach((treeState, index) => {
+            this._createTree(treeState.position.x, treeState.position.z, index, treeState.id);
         });
     }
 
-    _createTree(x, z, index) {
+    _createTree(x, z, index, treeId = `tree-${index}`) {
         const treeGroup = new THREE.Group();
 
         const trunkGeo = new THREE.CylinderGeometry(0.3, 0.4, 3, 8);
@@ -1895,24 +1995,26 @@ class World {
         treeGroup.position.set(x, 0, z);
         treeGroup.userData.isTree = true;
         treeGroup.userData.treeIndex = index;
-        treeGroup.userData.treeId = `tree-${index}`;
+        treeGroup.userData.treeId = treeId;
         this.trees.push(treeGroup);
         this.applesByTree.set(index, treeApples);
         this.scene.add(treeGroup);
     }
 
     _createDecorations() {
-        const grandstandFootprint = buildSoccerGrandstandFootprint(DEFAULT_SOCCER_FIELD_LAYOUT, 1.2);
+        const grandstandFootprint = buildSoccerGrandstandFootprint(this.soccerFieldState, 1.2);
         const castleFootprint = buildHouseFootprint(this.houseLayout, 2.4);
         const flowerColors = [0xff69b4, 0xffd700, 0xff6347, 0xda70d6, 0xffa500];
         for (let i = 0; i < 60; i++) {
             const x = (Math.random() - 0.5) * 80;
             const z = (Math.random() - 0.5) * 80;
 
-            const distToLake = Math.sqrt(x * x + z * z);
+            const dx = x - this.lakePosition.x;
+            const dz = z - this.lakePosition.z;
+            const distToLake = Math.sqrt((dx * dx) + (dz * dz));
             const isInsideSoccerField =
-                Math.abs(x - DEFAULT_SOCCER_FIELD_LAYOUT.position.x) < (DEFAULT_SOCCER_FIELD_LAYOUT.width / 2) + 1.5
-                && Math.abs(z - DEFAULT_SOCCER_FIELD_LAYOUT.position.z) < (DEFAULT_SOCCER_FIELD_LAYOUT.depth / 2) + 1.5;
+                Math.abs(x - this.soccerFieldState.position.x) < (this.soccerFieldState.width / 2) + 1.5
+                && Math.abs(z - this.soccerFieldState.position.z) < (this.soccerFieldState.depth / 2) + 1.5;
             const isInsideGrandstand = isPointInsideRect({ x, z }, grandstandFootprint);
             const isInsideCastle = isPointInsideRect({ x, z }, castleFootprint);
             if (distToLake < this.lakeRadius + 2 || isInsideCastle || isInsideSoccerField || isInsideGrandstand) continue;

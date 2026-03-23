@@ -292,20 +292,30 @@ class Player {
         this._updateJump(delta);
         this.direction.set(0, 0, 0);
         const movementSpeed = Number.isFinite(options.speed) ? options.speed : this.speed;
-        const inputForward = (keys.w || keys.arrowup ? 1 : 0) - (keys.s || keys.arrowdown ? 1 : 0);
-        const inputRight = (keys.d || keys.arrowright ? 1 : 0) - (keys.a || keys.arrowleft ? 1 : 0);
+        const explicitInputVector = options.inputVector;
 
-        if (inputForward !== 0 || inputRight !== 0) {
-            const forwardX = -Math.sin(cameraYaw);
-            const forwardZ = -Math.cos(cameraYaw);
-            const rightX = Math.cos(cameraYaw);
-            const rightZ = -Math.sin(cameraYaw);
-
+        if (explicitInputVector && (Math.abs(Number(explicitInputVector.moveX) || 0) > 0.001 || Math.abs(Number(explicitInputVector.moveZ) || 0) > 0.001)) {
             this.direction.set(
-                rightX * inputRight + forwardX * inputForward,
+                Number(explicitInputVector.moveX) || 0,
                 0,
-                rightZ * inputRight + forwardZ * inputForward
+                Number(explicitInputVector.moveZ) || 0
             );
+        } else {
+            const inputForward = (keys.w || keys.arrowup ? 1 : 0) - (keys.s || keys.arrowdown ? 1 : 0);
+            const inputRight = (keys.d || keys.arrowright ? 1 : 0) - (keys.a || keys.arrowleft ? 1 : 0);
+
+            if (inputForward !== 0 || inputRight !== 0) {
+                const forwardX = -Math.sin(cameraYaw);
+                const forwardZ = -Math.cos(cameraYaw);
+                const rightX = Math.cos(cameraYaw);
+                const rightZ = -Math.sin(cameraYaw);
+
+                this.direction.set(
+                    rightX * inputRight + forwardX * inputForward,
+                    0,
+                    rightZ * inputRight + forwardZ * inputForward
+                );
+            }
         }
 
         this.isWalking = this.direction.length() > 0;

@@ -202,7 +202,7 @@ function setupSecurity(app) {
     scope: 'ai-public-state',
     skip: (req) => req.method !== 'GET',
   });
-  app.use('/api/v1/ai-game/public-state', aiPublicStateLimiter);
+  app.use(['/api/v1/ai-game/bootstrap-state', '/api/v1/ai-game/public-state'], aiPublicStateLimiter);
 
   const aiCommandLimiter = buildJsonRateLimiter({
     windowMs: config.AI_COMMAND_RATE_LIMIT_WINDOW_MS,

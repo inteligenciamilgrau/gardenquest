@@ -83,6 +83,7 @@ const SWORD_SPAWNS = Object.freeze([
 
 const WORLD_BOUNDS = 45;
 const PLAYER_COLLISION_RADIUS = 0.45;
+const STATIC_WORLD_VERSION = 1;
 
 function clonePoint(point) {
   return {
@@ -374,6 +375,28 @@ function cloneArrowProjectile(arrow) {
   };
 }
 
+function cloneSoccerFieldState(fieldState) {
+  return {
+    id: SOCCER_FIELD.id,
+    type: SOCCER_FIELD.type,
+    position: clonePoint(fieldState?.position || SOCCER_FIELD.position),
+    width: Number(fieldState?.width) || SOCCER_FIELD.width,
+    depth: Number(fieldState?.depth) || SOCCER_FIELD.depth,
+    goalWidth: Number(fieldState?.goalWidth) || SOCCER_FIELD.goalWidth,
+    goalDepth: Number(fieldState?.goalDepth) || SOCCER_FIELD.goalDepth,
+    goalHeight: Number(fieldState?.goalHeight) || SOCCER_FIELD.goalHeight,
+    postThickness: Number(fieldState?.postThickness) || SOCCER_FIELD.postThickness,
+    lineWidth: Number(fieldState?.lineWidth) || SOCCER_FIELD.lineWidth,
+    ballRadius: Number(fieldState?.ballRadius) || SOCCER_FIELD.ballRadius,
+    grandstandSide: fieldState?.grandstandSide === 'west' ? 'west' : SOCCER_FIELD.grandstandSide,
+    grandstandSidelineGap: Number(fieldState?.grandstandSidelineGap) || SOCCER_FIELD.grandstandSidelineGap,
+    grandstandLengthPadding: Number(fieldState?.grandstandLengthPadding) || SOCCER_FIELD.grandstandLengthPadding,
+    grandstandTiers: Math.max(1, Math.trunc(Number(fieldState?.grandstandTiers) || SOCCER_FIELD.grandstandTiers)),
+    grandstandTierHeight: Number(fieldState?.grandstandTierHeight) || SOCCER_FIELD.grandstandTierHeight,
+    grandstandTierDepth: Number(fieldState?.grandstandTierDepth) || SOCCER_FIELD.grandstandTierDepth,
+  };
+}
+
 function cloneSoccerGoalEvent(goalEvent) {
   if (!goalEvent || typeof goalEvent !== 'object') {
     return null;
@@ -390,25 +413,7 @@ function cloneSoccerGoalEvent(goalEvent) {
 
 function cloneSoccerState(soccer) {
   return {
-    field: {
-      id: SOCCER_FIELD.id,
-      type: SOCCER_FIELD.type,
-      position: clonePoint(soccer?.field?.position || SOCCER_FIELD.position),
-      width: SOCCER_FIELD.width,
-      depth: SOCCER_FIELD.depth,
-      goalWidth: SOCCER_FIELD.goalWidth,
-      goalDepth: SOCCER_FIELD.goalDepth,
-      goalHeight: SOCCER_FIELD.goalHeight,
-      postThickness: SOCCER_FIELD.postThickness,
-      lineWidth: SOCCER_FIELD.lineWidth,
-      ballRadius: SOCCER_FIELD.ballRadius,
-      grandstandSide: soccer?.field?.grandstandSide === 'west' ? 'west' : SOCCER_FIELD.grandstandSide,
-      grandstandSidelineGap: Number(soccer?.field?.grandstandSidelineGap) || SOCCER_FIELD.grandstandSidelineGap,
-      grandstandLengthPadding: Number(soccer?.field?.grandstandLengthPadding) || SOCCER_FIELD.grandstandLengthPadding,
-      grandstandTiers: Math.max(1, Math.trunc(Number(soccer?.field?.grandstandTiers) || SOCCER_FIELD.grandstandTiers)),
-      grandstandTierHeight: Number(soccer?.field?.grandstandTierHeight) || SOCCER_FIELD.grandstandTierHeight,
-      grandstandTierDepth: Number(soccer?.field?.grandstandTierDepth) || SOCCER_FIELD.grandstandTierDepth,
-    },
+    field: cloneSoccerFieldState(soccer?.field),
     ball: {
       position: clonePoint(soccer?.ball?.position),
       velocity: clonePoint(soccer?.ball?.velocity),
@@ -728,8 +733,9 @@ function getTargetById(worldState, targetId) {
   };
 }
 
-function getPublicWorldState(worldState) {
+function getPublicStaticWorldState(worldState) {
   return {
+    version: STATIC_WORLD_VERSION,
     bounds: worldState.bounds,
     lake: {
       id: worldState.lake.id,
@@ -753,6 +759,18 @@ function getPublicWorldState(worldState) {
       id: tree.id,
       type: tree.type,
       position: clonePoint(tree.position),
+    })),
+    soccerField: cloneSoccerFieldState(worldState?.soccer?.field),
+    appleLayout: APPLE_OFFSETS.map(clonePoint),
+  };
+}
+
+function getPublicDynamicWorldState(worldState) {
+  const soccer = cloneSoccerState(worldState.soccer);
+
+  return {
+    trees: worldState.trees.map((tree) => ({
+      id: tree.id,
       applesRemaining: tree.applesRemaining,
     })),
     droppedApples: Array.isArray(worldState.droppedApples)
@@ -767,14 +785,24 @@ function getPublicWorldState(worldState) {
     arrows: Array.isArray(worldState.arrows)
       ? worldState.arrows.map(cloneArrowProjectile)
       : [],
-    soccer: cloneSoccerState(worldState.soccer),
-    elevators: Array.isArray(worldState.elevators) 
-      ? worldState.elevators.map(e => ({ id: e.id, y: e.y, state: e.state })) 
+    soccer: {
+      ball: soccer.ball,
+      restartAt: soccer.restartAt,
+      lastGoalEvent: soccer.lastGoalEvent,
+    },
+    elevators: Array.isArray(worldState.elevators)
+      ? worldState.elevators.map((elevator) => ({ id: elevator.id, y: elevator.y, state: elevator.state }))
       : [],
     graves: Array.isArray(worldState.graves)
       ? worldState.graves.map(cloneGrave)
       : [],
-    appleLayout: APPLE_OFFSETS.map(clonePoint),
+  };
+}
+
+function getPublicWorldState(worldState) {
+  return {
+    ...getPublicStaticWorldState(worldState),
+    ...getPublicDynamicWorldState(worldState),
   };
 }
 
@@ -783,11 +811,14 @@ module.exports = {
   HOUSE,
   LAKE,
   PLAYER_COLLISION_RADIUS,
+  STATIC_WORLD_VERSION,
   SOCCER_FIELD,
   WORLD_BOUNDS,
   TREE_POSITIONS,
   createWorldState,
   getHouseTowerElevators,
+  getPublicDynamicWorldState,
+  getPublicStaticWorldState,
   getPublicWorldState,
   getTargetById,
   getWorldCollisionBoxes,

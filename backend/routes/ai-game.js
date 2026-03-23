@@ -80,6 +80,15 @@ function createAiGameRoutes(aiGameEngine) {
     }
   });
 
+  router.get('/bootstrap-state', async (req, res, next) => {
+    try {
+      res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+      res.json(await aiGameEngine.getBootstrapState());
+    } catch (error) {
+      next(error);
+    }
+  });
+
   router.post('/command', async (req, res) => {
     const validation = validatePlayerCommandBody(req.body, {
       chatMaxChars: config.PLAYER_CHAT_MAX_CHARS,

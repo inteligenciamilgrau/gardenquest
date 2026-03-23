@@ -15,6 +15,11 @@
     const STATE_POLL_INTERVAL_MS = 200;
     const STATE_POLL_BACKOFF_MS = 1000;
     const INPUT_SYNC_INTERVAL_MS = 80;
+    const DEFAULT_SIMULATION_TICK_MS = 50;
+    const INPUT_RELEASE_HOLD_MARGIN_MS = 12;
+    const REMOTE_INTERPOLATION_BACK_TIME_MS = 140;
+    const REMOTE_EXTRAPOLATION_MAX_MS = 110;
+    const SERVER_TIME_OFFSET_BLEND = 0.18;
     const SELF_AUTHORITY_PREDICTION_MAX_SECONDS = 0.35;
     const SELF_AUTHORITY_MOVING_DEADZONE = 1.1;
     const SELF_AUTHORITY_MOVING_SNAP_DISTANCE = 9;
@@ -422,8 +427,9 @@
             keys[key] = false;
         });
         clearTouchMovementKeys();
+        cancelHeldMovementInput();
         lastInputSignature = '__stale__';
-        flushMovementInput();
+        flushMovementInput({ forceRelease: true });
 
         if (document.exitPointerLock) {
             document.exitPointerLock();
@@ -1233,7 +1239,177 @@
         }
     }
 
-    const world = new World(scene);
+    function applyRuntimeSettings(settings) {
+        if (!settings) {
+            return;
+        }
+
+        if (Number.isFinite(settings.simulationTickMs) && settings.simulationTickMs > 0) {
+            stateSync.simulationTickMs = settings.simulationTickMs;
+        }
+
+        if (Number.isFinite(settings.playerMoveSpeed)) {
+            stateSync.playerMoveSpeed = settings.playerMoveSpeed;
+        }
+
+        if (Number.isFinite(settings.playerRunSpeed)) {
+            stateSync.playerRunSpeed = settings.playerRunSpeed;
+        }
+
+        if (Number.isFinite(settings.chatMaxChars) && settings.chatMaxChars > 0) {
+            chatMaxChars = settings.chatMaxChars;
+            if (chatInput) {
+                chatInput.maxLength = String(chatMaxChars);
+            }
+            updateChatCounter();
+        }
+
+        if (Number.isFinite(settings.nicknameMaxChars) && settings.nicknameMaxChars > 0) {
+            nicknameMaxChars = settings.nicknameMaxChars;
+            if (profileNicknameInput) {
+                profileNicknameInput.maxLength = String(nicknameMaxChars);
+            }
+        }
+    }
+
+    function parseServerTimeMs(isoString) {
+        const serverTimeMs = Date.parse(String(isoString || ''));
+        return Number.isFinite(serverTimeMs) ? serverTimeMs : 0;
+    }
+
+    function updateServerTimeEstimate(serverTimeIso) {
+        const serverTimeMs = parseServerTimeMs(serverTimeIso);
+        if (serverTimeMs <= 0) {
+            return 0;
+        }
+
+        const nextOffsetMs = serverTimeMs - Date.now();
+        if (!Number.isFinite(stateSync.serverTimeOffsetMs)) {
+            stateSync.serverTimeOffsetMs = nextOffsetMs;
+        } else {
+            stateSync.serverTimeOffsetMs += (nextOffsetMs - stateSync.serverTimeOffsetMs) * SERVER_TIME_OFFSET_BLEND;
+        }
+
+        return serverTimeMs;
+    }
+
+    function getEstimatedServerTimeMs() {
+        if (!Number.isFinite(stateSync.serverTimeOffsetMs)) {
+            return Date.now();
+        }
+
+        return Date.now() + stateSync.serverTimeOffsetMs;
+    }
+
+    function pushActorSample(samples, actorState, serverTimeMs) {
+        if (!Array.isArray(samples) || !actorState?.position || !Number.isFinite(serverTimeMs) || serverTimeMs <= 0) {
+            return;
+        }
+
+        const sample = {
+            serverTimeMs,
+            position: new THREE.Vector3(
+                Number(actorState.position.x) || 0,
+                Number(actorState.position.y) || 0,
+                Number(actorState.position.z) || 0
+            ),
+            rotationY: typeof actorState.rotationY === 'number' ? actorState.rotationY : 0,
+            status: actorState.status || 'idle',
+        };
+        const previousSample = samples[samples.length - 1];
+
+        if (previousSample && previousSample.serverTimeMs === sample.serverTimeMs) {
+            previousSample.position.copy(sample.position);
+            previousSample.rotationY = sample.rotationY;
+            previousSample.status = sample.status;
+            return;
+        }
+
+        samples.push(sample);
+        if (samples.length > 8) {
+            samples.splice(0, samples.length - 8);
+        }
+    }
+
+    function interpolateActorSample(samples, renderServerTimeMs) {
+        if (!Array.isArray(samples) || samples.length === 0) {
+            return null;
+        }
+
+        if (samples.length === 1 || !Number.isFinite(renderServerTimeMs)) {
+            return {
+                position: samples[0].position.clone(),
+                rotationY: samples[0].rotationY,
+            };
+        }
+
+        let previousSample = samples[0];
+        let nextSample = null;
+
+        for (let index = 1; index < samples.length; index += 1) {
+            nextSample = samples[index];
+            if (renderServerTimeMs <= nextSample.serverTimeMs) {
+                break;
+            }
+            previousSample = nextSample;
+            nextSample = null;
+        }
+
+        if (nextSample) {
+            const spanMs = Math.max(1, nextSample.serverTimeMs - previousSample.serverTimeMs);
+            const blend = clamp((renderServerTimeMs - previousSample.serverTimeMs) / spanMs, 0, 1);
+            return {
+                position: previousSample.position.clone().lerp(nextSample.position, blend),
+                rotationY: THREE.MathUtils.lerp(previousSample.rotationY, nextSample.rotationY, blend),
+            };
+        }
+
+        const latestSample = samples[samples.length - 1];
+        const priorSample = samples[samples.length - 2];
+        const deltaMs = latestSample.serverTimeMs - priorSample.serverTimeMs;
+        const extrapolationMs = clamp(renderServerTimeMs - latestSample.serverTimeMs, 0, REMOTE_EXTRAPOLATION_MAX_MS);
+        const extrapolatedPosition = latestSample.position.clone();
+
+        if (deltaMs > 0 && extrapolationMs > 0) {
+            const velocity = latestSample.position.clone().sub(priorSample.position).multiplyScalar(1 / deltaMs);
+            extrapolatedPosition.addScaledVector(velocity, extrapolationMs);
+        }
+
+        return {
+            position: extrapolatedPosition,
+            rotationY: latestSample.rotationY,
+        };
+    }
+
+    async function fetchBootstrapState() {
+        const response = await fetch(`${getApiUrl()}/api/v1/ai-game/bootstrap-state`, {
+            cache: 'no-store',
+            credentials: 'include',
+        });
+
+        if (response.status === 401) {
+            window.location.replace('index.html');
+            return null;
+        }
+
+        if (!response.ok) {
+            throw new Error(`Bootstrap request failed with ${response.status}`);
+        }
+
+        return response.json();
+    }
+
+    let bootstrapState = null;
+    try {
+        bootstrapState = await fetchBootstrapState();
+    } catch (error) {
+        console.error('Failed to fetch bootstrap state:', error);
+    }
+
+    const initialWorldState = bootstrapState?.world || {};
+    const initialSettings = bootstrapState?.settings || {};
+
+    const world = new World(scene, initialWorldState);
     const actionHud = new ActionHud();
     const actionSoundboard = new ActionSoundboard();
     const initialPalette = buildAppearancePalette(initialProfile);
@@ -1285,14 +1461,25 @@
         selfTargetPosition: new THREE.Vector3(localPlayer.group.position.x, 0, localPlayer.group.position.z),
         selfTargetRotationY: localPlayer.group.rotation.y,
         selfSnapshotReceivedAt: performance.now(),
+        selfSnapshotServerTimeMs: 0,
         selfInitialized: false,
         selfStatus: 'idle',
-        worldBounds: 45,
-        playerMoveSpeed: 8,
-        playerRunSpeed: 12.5,
+        worldBounds: Number.isFinite(initialWorldState?.bounds) && initialWorldState.bounds > 0 ? initialWorldState.bounds : 45,
+        simulationTickMs: Number.isFinite(initialSettings?.simulationTickMs) && initialSettings.simulationTickMs > 0
+            ? initialSettings.simulationTickMs
+            : DEFAULT_SIMULATION_TICK_MS,
+        playerMoveSpeed: Number.isFinite(initialSettings?.playerMoveSpeed) ? initialSettings.playerMoveSpeed : 8,
+        playerRunSpeed: Number.isFinite(initialSettings?.playerRunSpeed) ? initialSettings.playerRunSpeed : 12.5,
         aiTargetPosition: new THREE.Vector3(-3, 0, 15),
         aiTargetRotationY: Math.PI,
+        aiSamples: [],
+        aiInitialized: false,
         remotePresenceInitialized: false,
+        serverTimeOffsetMs: parseServerTimeMs(bootstrapState?.serverTime) > 0
+            ? parseServerTimeMs(bootstrapState?.serverTime) - Date.now()
+            : 0,
+        lastSnapshotTick: -1,
+        worldVersion: Number(bootstrapState?.worldVersion || initialWorldState?.version) || 0,
     };
 
     const keys = {};
@@ -1303,7 +1490,12 @@
     let inputCommandInFlight = false;
     let profileCommandInFlight = false;
     let lastInputSignature = '0.000:0.000:0';
+    let lastObservedInputSignature = lastInputSignature;
     let lastMovementErrorAt = 0;
+    let lastDispatchedMovementInput = { moveX: 0, moveZ: 0, isRunning: false };
+    let heldMovementInput = { moveX: 0, moveZ: 0, isRunning: false };
+    let heldMovementReleaseAtMs = 0;
+    let heldMovementFlushTimeout = null;
     let statePollTimeout = null;
     let unreadChatCount = 0;
     let lastChatEntryId = 0;
@@ -1312,8 +1504,18 @@
     let soccerBallCarrierId = '';
     const activeTouchMovementPointers = new Map();
 
+    applyRuntimeSettings(initialSettings);
+
     function formatInputSignature(input) {
         return `${input.moveX.toFixed(3)}:${input.moveZ.toFixed(3)}:${input.isRunning ? 1 : 0}`;
+    }
+
+    function cloneMovementInput(input = {}) {
+        return {
+            moveX: Number(input.moveX) || 0,
+            moveZ: Number(input.moveZ) || 0,
+            isRunning: Boolean(input.isRunning),
+        };
     }
 
     function clearTouchMovementKeys() {
@@ -1360,6 +1562,60 @@
             moveZ: moveZ / magnitude,
             isRunning,
         };
+    }
+
+    function clearHeldMovementFlush() {
+        if (heldMovementFlushTimeout) {
+            window.clearTimeout(heldMovementFlushTimeout);
+            heldMovementFlushTimeout = null;
+        }
+    }
+
+    function cancelHeldMovementInput() {
+        clearHeldMovementFlush();
+        heldMovementReleaseAtMs = 0;
+        heldMovementInput = { moveX: 0, moveZ: 0, isRunning: false };
+    }
+
+    function getInputReleaseHoldMs() {
+        const simulationTickMs = Number.isFinite(stateSync.simulationTickMs) && stateSync.simulationTickMs > 0
+            ? stateSync.simulationTickMs
+            : DEFAULT_SIMULATION_TICK_MS;
+        return simulationTickMs + INPUT_RELEASE_HOLD_MARGIN_MS;
+    }
+
+    function scheduleHeldMovementFlush(delayMs) {
+        clearHeldMovementFlush();
+        heldMovementFlushTimeout = window.setTimeout(() => {
+            heldMovementFlushTimeout = null;
+            flushMovementInput({ forceRelease: true });
+        }, Math.max(1, Math.ceil(delayMs)));
+    }
+
+    function getEffectiveMovementInput(rawInput = computeMovementVector()) {
+        if (isChatOpen || isProfileOpen || isCommandsOpen || stateSync.selfStatus === 'dead') {
+            clearHeldMovementFlush();
+            heldMovementReleaseAtMs = 0;
+            heldMovementInput = { moveX: 0, moveZ: 0, isRunning: false };
+            return cloneMovementInput(rawInput);
+        }
+
+        if (hasMovementInput(rawInput)) {
+            return cloneMovementInput(rawInput);
+        }
+
+        if (!hasMovementInput(heldMovementInput) || heldMovementReleaseAtMs <= 0) {
+            return cloneMovementInput(rawInput);
+        }
+
+        const nowServerMs = getEstimatedServerTimeMs();
+        if (nowServerMs >= heldMovementReleaseAtMs) {
+            heldMovementReleaseAtMs = 0;
+            heldMovementInput = { moveX: 0, moveZ: 0, isRunning: false };
+            return cloneMovementInput(rawInput);
+        }
+
+        return cloneMovementInput(heldMovementInput);
     }
 
     function getMovementSpeedForInput(input) {
@@ -1528,8 +1784,30 @@
         actionHud.showSystemNotice(`Gol de ${playerName}!`);
     }
 
-    async function flushMovementInput() {
-        const nextInput = computeMovementVector();
+    async function flushMovementInput({ forceRelease = false } = {}) {
+        const rawInput = computeMovementVector();
+        const rawSignature = formatInputSignature(rawInput);
+
+        if (rawSignature !== lastObservedInputSignature) {
+            lastObservedInputSignature = rawSignature;
+            if (hasMovementInput(rawInput)) {
+                clearHeldMovementFlush();
+                heldMovementReleaseAtMs = 0;
+                heldMovementInput = cloneMovementInput(rawInput);
+            }
+        }
+
+        const shouldDeferRelease = !forceRelease
+            && !hasMovementInput(rawInput)
+            && hasMovementInput(lastDispatchedMovementInput)
+            && heldMovementReleaseAtMs > getEstimatedServerTimeMs();
+
+        if (shouldDeferRelease) {
+            scheduleHeldMovementFlush(heldMovementReleaseAtMs - getEstimatedServerTimeMs());
+            return;
+        }
+
+        const nextInput = cloneMovementInput(rawInput);
         const nextSignature = formatInputSignature(nextInput);
 
         if (inputCommandInFlight || nextSignature === lastInputSignature) {
@@ -1537,6 +1815,17 @@
         }
 
         inputCommandInFlight = true;
+        lastDispatchedMovementInput = cloneMovementInput(nextInput);
+
+        if (hasMovementInput(nextInput)) {
+            clearHeldMovementFlush();
+            heldMovementInput = cloneMovementInput(nextInput);
+            heldMovementReleaseAtMs = getEstimatedServerTimeMs() + getInputReleaseHoldMs();
+        } else {
+            clearHeldMovementFlush();
+            heldMovementReleaseAtMs = 0;
+            heldMovementInput = { moveX: 0, moveZ: 0, isRunning: false };
+        }
 
         try {
             await sendCommand('set_input', nextInput, { suppressErrorToast: true });
@@ -1557,18 +1846,17 @@
         }
     }
 
-    function getPredictedSelfAuthorityState() {
+    function getPredictedSelfAuthorityState(input = getEffectiveMovementInput()) {
         const predictedPosition = stateSync.selfTargetPosition.clone();
-        const input = computeMovementVector();
         const moving = hasMovementInput(input);
         let predictedRotationY = stateSync.selfTargetRotationY;
 
         if (moving) {
             const movementSpeed = getMovementSpeedForInput(input);
-            const elapsedSeconds = Math.min(
-                (performance.now() - stateSync.selfSnapshotReceivedAt) / 1000,
-                SELF_AUTHORITY_PREDICTION_MAX_SECONDS
-            );
+            const elapsedMs = stateSync.selfSnapshotServerTimeMs > 0
+                ? Math.max(0, getEstimatedServerTimeMs() - stateSync.selfSnapshotServerTimeMs)
+                : Math.max(0, performance.now() - stateSync.selfSnapshotReceivedAt);
+            const elapsedSeconds = Math.min(elapsedMs / 1000, SELF_AUTHORITY_PREDICTION_MAX_SECONDS);
             const nextPredictedPosition = world.resolveActorMovement(
                 predictedPosition,
                 {
@@ -1593,12 +1881,11 @@
         };
     }
 
-    function getSelfPredictionLeadSeconds(authoritativePosition) {
+    function getSelfPredictionLeadSeconds(authoritativePosition, input = getEffectiveMovementInput()) {
         if (!stateSync.selfInitialized || !authoritativePosition) {
             return 0;
         }
 
-        const input = computeMovementVector();
         if (!hasMovementInput(input)) {
             return 0;
         }
@@ -1633,8 +1920,9 @@
                 keys[key] = false;
             });
             clearTouchMovementKeys();
+            cancelHeldMovementInput();
             lastInputSignature = '__stale__';
-            flushMovementInput();
+            flushMovementInput({ forceRelease: true });
 
             if (document.exitPointerLock) {
                 document.exitPointerLock();
@@ -1666,8 +1954,9 @@
         }
 
         if (wasChatOpen) {
+            cancelHeldMovementInput();
             lastInputSignature = '__stale__';
-            flushMovementInput();
+            flushMovementInput({ forceRelease: true });
         }
     }
 
@@ -1713,8 +2002,9 @@
         }
 
         syncTopMenuToggles();
+        cancelHeldMovementInput();
         lastInputSignature = '__stale__';
-        flushMovementInput();
+        flushMovementInput({ forceRelease: true });
     }
 
     function toggleCommandsPanel() {
@@ -1763,8 +2053,9 @@
 
         setProfileStatus('');
         syncTopMenuToggles();
+        cancelHeldMovementInput();
         lastInputSignature = '__stale__';
-        flushMovementInput();
+        flushMovementInput({ forceRelease: true });
     }
 
     function toggleProfilePanel() {
@@ -1810,6 +2101,7 @@
                     stateSync.selfTargetRotationY = result.rotationY;
                 }
                 stateSync.selfSnapshotReceivedAt = performance.now();
+                stateSync.selfSnapshotServerTimeMs = getEstimatedServerTimeMs();
                 stateSync.selfInitialized = true;
             }
             updateActorModelState(localUi, {
@@ -2014,7 +2306,7 @@
             if (event.repeat) {
                 return;
             }
-            sendFruitToggleCommand();
+            handleSecondaryActionInput();
             return;
         }
 
@@ -2035,8 +2327,9 @@
             keys[key] = false;
         });
         clearTouchMovementKeys();
+        cancelHeldMovementInput();
         lastInputSignature = '__stale__';
-        flushMovementInput();
+        flushMovementInput({ forceRelease: true });
     });
 
     function handlePrimaryActionInput() {
@@ -2045,6 +2338,14 @@
         }
 
         sendUseActionCommand();
+    }
+
+    function handleSecondaryActionInput() {
+        if (isChatOpen || isProfileOpen || isCommandsOpen) {
+            return;
+        }
+
+        sendFruitToggleCommand();
     }
 
     function requestPointerLock() {
@@ -2114,7 +2415,7 @@
         camera.lookAt(effectiveLookTarget);
     }
 
-    function createRemotePlayerState(playerState) {
+    function createRemotePlayerState(playerState, serverTimeMs = 0) {
         const palette = buildAppearancePalette(playerState.appearance);
         const remotePlayer = new Player(scene, playerState.name, {
             spawnPosition: playerState.position,
@@ -2133,7 +2434,7 @@
             maxCloseDistance: 15,
         });
 
-        return {
+        const remotePlayerState = {
             player: remotePlayer,
             label: remoteUi.label,
             vitals: remoteUi.vitals,
@@ -2153,7 +2454,11 @@
             ),
             targetRotationY: playerState.rotationY || Math.PI,
             appearanceSignature: getAppearanceSignature(playerState.appearance),
+            samples: [],
         };
+
+        pushActorSample(remotePlayerState.samples, playerState, serverTimeMs);
+        return remotePlayerState;
     }
 
     function removeRemotePlayer(playerId) {
@@ -2193,6 +2498,20 @@
     function applySnapshot(snapshot) {
         if (!snapshot) return;
 
+        const snapshotTick = Number(snapshot.tick);
+        if (Number.isFinite(snapshotTick) && snapshotTick <= stateSync.lastSnapshotTick) {
+            return;
+        }
+
+        if (Number.isFinite(snapshotTick)) {
+            stateSync.lastSnapshotTick = snapshotTick;
+        }
+
+        const serverTimeMs = updateServerTimeEstimate(snapshot.serverTime);
+        if (!stateSync.worldVersion && Number(snapshot.worldVersion) > 0) {
+            stateSync.worldVersion = Number(snapshot.worldVersion);
+        }
+
         if (snapshot.self && snapshot.self.position) {
             stateSync.selfStatus = snapshot.self.status || 'idle';
             stateSync.selfTargetPosition.set(
@@ -2203,7 +2522,10 @@
             stateSync.selfTargetRotationY = typeof snapshot.self.rotationY === 'number'
                 ? snapshot.self.rotationY
                 : stateSync.selfTargetRotationY;
-            stateSync.selfSnapshotReceivedAt = performance.now() - (getSelfPredictionLeadSeconds(snapshot.self.position) * 1000);
+            stateSync.selfSnapshotReceivedAt = performance.now();
+            stateSync.selfSnapshotServerTimeMs = serverTimeMs > 0
+                ? serverTimeMs - (getSelfPredictionLeadSeconds(snapshot.self.position) * 1000)
+                : 0;
 
             if (!stateSync.selfInitialized) {
                 localPlayer.setTransform(snapshot.self.position, snapshot.self.rotationY);
@@ -2244,36 +2566,15 @@
         }
 
         if (snapshot.settings) {
-            if (Number.isFinite(snapshot.settings.playerMoveSpeed)) {
-                stateSync.playerMoveSpeed = snapshot.settings.playerMoveSpeed;
-            }
-
-            if (Number.isFinite(snapshot.settings.playerRunSpeed)) {
-                stateSync.playerRunSpeed = snapshot.settings.playerRunSpeed;
-            }
-
-            if (Number.isFinite(snapshot.settings.chatMaxChars) && snapshot.settings.chatMaxChars > 0) {
-                chatMaxChars = snapshot.settings.chatMaxChars;
-                chatInput.maxLength = String(chatMaxChars);
-                updateChatCounter();
-            }
-
-            if (Number.isFinite(snapshot.settings.nicknameMaxChars) && snapshot.settings.nicknameMaxChars > 0) {
-                nicknameMaxChars = snapshot.settings.nicknameMaxChars;
-                if (profileNicknameInput) {
-                    profileNicknameInput.maxLength = String(nicknameMaxChars);
-                }
-            }
+            applyRuntimeSettings(snapshot.settings);
         }
 
         if (snapshot.ai && snapshot.ai.position) {
-            stateSync.aiTargetPosition.set(
-                snapshot.ai.position.x || 0,
-                snapshot.ai.position.y || 0,
-                snapshot.ai.position.z || 0
-            );
-            if (typeof snapshot.ai.rotationY === 'number') {
-                stateSync.aiTargetRotationY = snapshot.ai.rotationY;
+            pushActorSample(stateSync.aiSamples, snapshot.ai, serverTimeMs);
+
+            if (!stateSync.aiInitialized) {
+                aiPlayer.setTransform(snapshot.ai.position, snapshot.ai.rotationY);
+                stateSync.aiInitialized = true;
             }
 
             updateLabelSprite(aiUi.label, snapshot.ai.name || 'Jardineiro IA', {
@@ -2337,7 +2638,7 @@
             const isNewRemotePlayer = !remotePlayers.has(playerState.id);
 
             if (isNewRemotePlayer) {
-                remotePlayers.set(playerState.id, createRemotePlayerState(playerState));
+                remotePlayers.set(playerState.id, createRemotePlayerState(playerState, serverTimeMs));
 
                 if (stateSync.remotePresenceInitialized) {
                     actionHud.showSystemNotice(`${playerState.name || 'Alguem'} entrou no jardim.`);
@@ -2345,14 +2646,7 @@
             }
 
             const remoteState = remotePlayers.get(playerState.id);
-            remoteState.targetPosition.set(
-                playerState.position.x || 0,
-                playerState.position.y || 0,
-                playerState.position.z || 0
-            );
-            remoteState.targetRotationY = typeof playerState.rotationY === 'number'
-                ? playerState.rotationY
-                : remoteState.targetRotationY;
+            pushActorSample(remoteState.samples, playerState, serverTimeMs);
 
             const nextAppearanceSignature = getAppearanceSignature(playerState.appearance);
             if (remoteState.appearanceSignature !== nextAppearanceSignature) {
@@ -2424,6 +2718,11 @@
 
     canvas.addEventListener('contextmenu', (event) => event.preventDefault());
     canvas.addEventListener('mousedown', (event) => {
+        if (event.button === 2) {
+            handleSecondaryActionInput();
+            return;
+        }
+
         if (event.button !== 0) {
             return;
         }
@@ -2462,7 +2761,8 @@
 
         const delta = Math.min(clock.getDelta(), 0.05);
         elapsedTime += delta;
-        const localInput = computeMovementVector();
+        const rawLocalInput = computeMovementVector();
+        const localInput = getEffectiveMovementInput(rawLocalInput);
         const localMovementKeys = (isChatOpen || isProfileOpen || isCommandsOpen || stateSync.selfStatus === 'dead') ? {} : keys;
         localPlayer.speed = getMovementSpeedForInput(localInput);
 
@@ -2470,8 +2770,9 @@
             speed: localPlayer.speed,
             bound: stateSync.worldBounds,
             movementResolver: (currentPosition, nextPosition) => world.resolveActorMovement(currentPosition, nextPosition),
+            inputVector: localInput,
         });
-        const predictedSelfAuthority = getPredictedSelfAuthorityState();
+        const predictedSelfAuthority = getPredictedSelfAuthorityState(localInput);
         localPlayer.applyAuthorityCorrection(
             delta,
             predictedSelfAuthority.position,
@@ -2490,9 +2791,21 @@
                     rotationStrength: 10,
                 }
         );
+
+        const remoteRenderServerTimeMs = getEstimatedServerTimeMs() - REMOTE_INTERPOLATION_BACK_TIME_MS;
+        const aiTransform = interpolateActorSample(stateSync.aiSamples, remoteRenderServerTimeMs);
+        if (aiTransform) {
+            stateSync.aiTargetPosition.copy(aiTransform.position);
+            stateSync.aiTargetRotationY = aiTransform.rotationY;
+        }
         aiPlayer.updateRemote(delta, stateSync.aiTargetPosition, stateSync.aiTargetRotationY);
 
         remotePlayers.forEach((remoteState) => {
+            const remoteTransform = interpolateActorSample(remoteState.samples, remoteRenderServerTimeMs);
+            if (remoteTransform) {
+                remoteState.targetPosition.copy(remoteTransform.position);
+                remoteState.targetRotationY = remoteTransform.rotationY;
+            }
             remoteState.player.updateRemote(delta, remoteState.targetPosition, remoteState.targetRotationY);
         });
 

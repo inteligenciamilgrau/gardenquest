@@ -14,7 +14,9 @@ const { createOpenAiDecisionClient } = require('../services/openai-client');
 const {
   createWorldState,
   getHouseTowerElevators,
-  getPublicWorldState,
+  getPublicDynamicWorldState,
+  getPublicStaticWorldState,
+  STATIC_WORLD_VERSION,
   getTargetById,
   getWorldCollisionBoxes,
   isPositionBlocked,
@@ -1037,6 +1039,25 @@ class AiGameEngine {
     }
   }
 
+  buildPublicSettings() {
+    return {
+      simulationTickMs: config.AI_SIMULATION_TICK_MS,
+      playerMoveSpeed: config.PLAYER_MOVE_SPEED,
+      playerRunSpeed: config.PLAYER_RUN_SPEED,
+      chatMaxChars: config.PLAYER_CHAT_MAX_CHARS,
+      nicknameMaxChars: PLAYER_NICKNAME_MAX_LENGTH,
+    };
+  }
+
+  async getBootstrapState() {
+    return {
+      serverTime: new Date().toISOString(),
+      worldVersion: STATIC_WORLD_VERSION,
+      settings: this.buildPublicSettings(),
+      world: getPublicStaticWorldState(this.state.world),
+    };
+  }
+
   async getPublicState(user) {
     const player = await this.touchPlayerSession(user);
     const now = Date.now();
@@ -1046,18 +1067,14 @@ class AiGameEngine {
     return {
       serverTime: new Date(now).toISOString(),
       tick: this.state.tick,
-      settings: {
-        playerMoveSpeed: config.PLAYER_MOVE_SPEED,
-        playerRunSpeed: config.PLAYER_RUN_SPEED,
-        chatMaxChars: config.PLAYER_CHAT_MAX_CHARS,
-        nicknameMaxChars: PLAYER_NICKNAME_MAX_LENGTH,
-      },
+      worldVersion: STATIC_WORLD_VERSION,
+      settings: this.buildPublicSettings(),
       self: player ? this.buildSelfState(player, now) : null,
       players: Array.from(this.state.players.values())
         .map((candidate) => this.buildPublicPlayerState(candidate, now))
         .sort((left, right) => left.name.localeCompare(right.name, 'pt-BR')),
       ai: this.buildAiPublicState(now),
-      world: getPublicWorldState(this.state.world),
+      world: getPublicDynamicWorldState(this.state.world),
       leaderboard: {
         updatedAt: this.state.leaderboardLastUpdatedAt
           ? new Date(this.state.leaderboardLastUpdatedAt).toISOString()
