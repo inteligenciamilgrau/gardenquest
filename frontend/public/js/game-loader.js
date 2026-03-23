@@ -3,10 +3,10 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
 window.THREE = THREE;
 
 const gameScriptSources = [
-    'js/player.js?v=21',
-    'js/world.js?v=30',
-    'js/actions.js?v=18',
-    'js/game.js?v=55',
+    'js/player.js?v=25',
+    'js/world.js?v=35',
+    'js/actions.js?v=20',
+    'js/game.js?v=60',
 ];
 
 for (const src of gameScriptSources) {
