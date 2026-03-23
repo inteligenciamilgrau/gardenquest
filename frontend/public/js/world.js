@@ -2305,6 +2305,10 @@ class World {
     removeApple(appleData) {
         appleData.collected = true;
         appleData.mesh.visible = false;
+        // Also ensure it's removed from its parent group if it was attached
+        if (appleData.mesh.parent) {
+            appleData.mesh.parent.remove(appleData.mesh);
+        }
     }
 
     _createLooseAppleMarker(appleState) {
@@ -2468,7 +2472,7 @@ class World {
                 return;
             }
 
-            this.scene.remove(marker);
+            this.mainGroup.remove(marker);
             this._disposeSwordPickupMarker(marker);
             this.looseSwords.delete(swordId);
         });
@@ -2613,7 +2617,7 @@ class World {
                 return;
             }
 
-            this.scene.remove(marker);
+            this.mainGroup.remove(marker);
             this._disposeBowPickupMarker(marker);
             this.looseBows.delete(bowId);
         });
@@ -2728,7 +2732,7 @@ class World {
                 return;
             }
 
-            this.scene.remove(marker);
+            this.mainGroup.remove(marker);
             this._disposeArrowProjectileMarker(marker);
             this.arrowProjectiles.delete(arrowId);
         });
@@ -2764,7 +2768,7 @@ class World {
                 return;
             }
 
-            this.scene.remove(marker);
+            this.mainGroup.remove(marker);
             this._disposeLooseAppleMarker(marker);
             this.looseApples.delete(appleId);
         });
@@ -2828,8 +2832,9 @@ class World {
                 return;
             }
 
-            this.scene.remove(marker);
+            this.mainGroup.remove(marker);
             this._disposeGraveMarker(marker);
+            this.looseGraves?.delete(graveId); // Using optional chaining for safety
             this.graves.delete(graveId);
         });
     }
