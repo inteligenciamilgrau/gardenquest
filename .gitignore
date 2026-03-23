@@ -48,3 +48,7 @@ coverage/
 auxiliares/
 !legacy/auxiliares/
 !legacy/auxiliares/**
+
+# Scripts Utilitários
+kill-8080.bat
+kill-8080.ps1
