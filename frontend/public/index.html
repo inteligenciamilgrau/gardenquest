@@ -3,45 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Garden Quest - Um jogo 3D de exploração em um jardim mágico">
-    <title>Garden Quest — Login</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌳</text></svg>">
+    <meta name="description" content="Garden Quest Platform - Entre para acessar a plataforma e jogar Garden Quest">
+    <title>Garden Quest Platform - Login</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#127795;</text></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/login.css">
 </head>
 <body>
-    <div class="bg-particles" id="bgParticles"></div>
-    
     <div class="login-container">
         <div class="login-card">
             <div class="logo-section">
-                <div class="logo-icon">🌿</div>
-                <h1 class="game-title">Garden Quest</h1>
-                <p class="game-subtitle">Explore o jardim, colete frutas e descubra seu caminho</p>
+                <div class="logo-icon">&#127807;</div>
+                <h1 class="game-title">IMG Platform</h1>
+                <p class="game-subtitle">Entre no hub da plataforma e acesse o IMG online com login unico</p>
             </div>
 
             <div class="features">
                 <div class="feature">
-                    <span class="feature-icon">🏡</span>
-                    <span>Sua casa</span>
+                    <span class="feature-icon">&#127969;</span>
+                    <span>Hub central</span>
                 </div>
                 <div class="feature">
-                    <span class="feature-icon">🌳</span>
-                    <span>Árvores frutíferas</span>
+                    <span class="feature-icon">&#127795;</span>
+                    <span>IMG online</span>
                 </div>
                 <div class="feature">
-                    <span class="feature-icon">💧</span>
-                    <span>Lago cristalino</span>
+                    <span class="feature-icon">&#128167;</span>
+                    <span>Perfil compartilhado</span>
                 </div>
                 <div class="feature">
-                    <span class="feature-icon">🍎</span>
-                    <span>Colete maçãs</span>
+                    <span class="feature-icon">&#127822;</span>
+                    <span>Base pronta para novos jogos</span>
                 </div>
             </div>
 
-            <button class="google-btn" id="googleLoginBtn" onclick="loginWithGoogle()">
+            <button class="google-btn" id="googleLoginBtn" onclick="loginWithGoogle('/hub.html')">
                 <svg class="google-icon" viewBox="0 0 24 24">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
                     <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -54,42 +52,72 @@
             <p class="error-msg" id="errorMsg" style="display:none;"></p>
         </div>
 
-        <p class="footer">Feito com 💚 e Three.js</p>
+        <p class="footer">Plataforma de jogos com Three.js e backend compartilhado</p>
     </div>
 
     <script src="js/config.js?v=13"></script>
-    <script src="js/auth.js?v=9"></script>
+    <script src="js/auth.js?v=12"></script>
     <script>
         const params = new URLSearchParams(window.location.search);
 
-        // AUTO-REDIRECT: Check if the secure session cookie is already valid.
         (async function init() {
+            // Heartbeat with Freeze Detector
+            let lastPulse = Date.now();
+            setInterval(() => {
+                const now = Date.now();
+                const gap = now - lastPulse;
+                if (gap > 2000) {
+                    console.warn(`[LOGIN-FREEZE-DETECTOR] ⚠️ UI Thread blocked for ${gap}ms!`);
+                }
+                lastPulse = now;
+
+                let jsHeap = 'N/A';
+                if (window.performance && window.performance.memory) {
+                    const mem = window.performance.memory;
+                    jsHeap = `${(mem.usedJSHeapSize / 1024 / 1024).toFixed(2)}MB / ${(mem.totalJSHeapSize / 1024 / 1024).toFixed(2)}MB`;
+                }
+                console.log(`[LOGIN-HEARTBEAT] 🕒 Alive at ${new Date().toLocaleTimeString()} | 🧠 Memory: ${jsHeap}`);
+            }, 1000);
+
+            // Check if we just bounced from the hub in a loop
+            const path = '/hub.html';
+            const loopKey = `platform_auth_redirect:${path}`;
+            const lastRedirect = Number(sessionStorage.getItem(loopKey)) || 0;
+            const now = Date.now();
+
+            console.info('[Login] Initialization starting...', {
+                lastHubRedirect: lastRedirect ? new Date(lastRedirect).toLocaleTimeString() : 'none',
+                time: new Date().toLocaleTimeString()
+            });
+
+            console.debug('[Login] Checking authentication...');
             const user = await checkAuth();
+            
             if (user && !user.error) {
-                console.log('User authenticated, redirecting to game...');
-                window.location.replace('game.html');
+                console.info('[Login] User already authenticated:', user.name);
+                // If we were just redirected here due to a 401 on the hub within 10s,
+                // but checkAuth thinks we are OK, there is a sync issue.
+                // Stop the loop and show error.
+                if (now - lastRedirect < 10000) {
+                    console.error('[Login] Sync issue: checkAuth succeeded but hub auth failed just now.');
+                    const errorMsg = document.getElementById('errorMsg');
+                    if (errorMsg) {
+                        errorMsg.textContent = 'Erro de sincronizacao de sessao. Limpe o cache do navegador.';
+                        errorMsg.style.display = 'block';
+                    }
+                    return;
+                }
+                console.info('[Login] Redirecting to Hub.');
+                window.location.replace(path);
+            } else {
+                console.debug('[Login] No valid session found. Ready for user interaction.');
             }
         })();
 
-        // Check for auth errors in URL
         if (params.get('error')) {
             const errorMsg = document.getElementById('errorMsg');
             errorMsg.textContent = 'Erro ao fazer login. Tente novamente.';
             errorMsg.style.display = 'block';
-        }
-
-        // Floating particles background
-        const container = document.getElementById('bgParticles');
-        for (let i = 0; i < 30; i++) {
-            const particle = document.createElement('div');
-            particle.className = 'particle';
-            particle.style.left = Math.random() * 100 + '%';
-            particle.style.animationDelay = Math.random() * 15 + 's';
-            particle.style.animationDuration = (15 + Math.random() * 20) + 's';
-            particle.style.fontSize = (12 + Math.random() * 24) + 'px';
-            particle.style.opacity = 0.15 + Math.random() * 0.3;
-            particle.textContent = ['🍃', '🌿', '🍂', '✨', '🌸'][Math.floor(Math.random() * 5)];
-            container.appendChild(particle);
         }
     </script>
 </body>

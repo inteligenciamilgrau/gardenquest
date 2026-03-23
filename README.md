@@ -1,15 +1,26 @@
-# Garden Quest
+# Garden Quest Platform
 
-Garden Quest e um projeto web com backend em Node.js/Express e frontend estatico em HTML/CSS/JavaScript. O sistema usa Google OAuth para autenticacao, Supabase/PostgreSQL para persistencia de eventos, usuarios, perfis, chat e ranking, e uma IA opcional via OpenAI para controlar um NPC no jardim.
+Garden Quest Platform e um projeto web com backend em Node.js/Express e frontend estatico em HTML/CSS/JavaScript. O sistema usa Google OAuth para autenticacao, Supabase/PostgreSQL para persistencia de eventos, usuarios, perfis, chat e ranking, e uma IA opcional via OpenAI para controlar um NPC no jardim.
+
+Hoje a plataforma ja possui:
+
+- login centralizado
+- hub de jogos em `frontend/public/hub.html`
+- SDK compartilhado em `frontend/public/js/platform-sdk.js`
+- o Garden Quest publicado em `/games/garden-quest/`
 
 ## Estrutura
 
-- `backend/`: API, autenticacao, seguranca, eventos, persistencia e simulacao do jogo.
-- `frontend/public/`: paginas estaticas do login, jogo e dashboard.
+- `backend/`: API, autenticacao, seguranca, eventos, catalogo da plataforma, persistencia e simulacao.
+- `frontend/public/`: paginas estaticas do login, hub, dashboard e jogos.
+- `frontend/public/games/`: entrada canonica de cada jogo publicado.
+- `frontend/public/js/platform-sdk.js`: SDK compartilhado entre hub e jogos.
+- `backend/services/game-registry.js`: catalogo central de jogos da plataforma.
 - `backend/game/`: motor da simulacao, regras do mundo e validacao de comandos.
 - `backend/database/`: integracao PostgreSQL/Supabase e schema SQL.
 - `legacy/`: artefatos antigos mantidos apenas por historico.
 - `docs/security-review.md`: revisao de seguranca feita neste ciclo.
+- `docs/add-game.md`: guia para integrar novos jogos ao hub.
 
 ## Requisitos
 

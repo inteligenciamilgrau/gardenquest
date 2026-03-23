@@ -2,6 +2,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
 
 window.THREE = THREE;
 
+const assetBasePath = resolveAssetBasePath(window.PLATFORM_GAME_CONFIG?.assetBasePath || '/');
 const gameScriptSources = [
     'js/player.js?v=25',
     'js/world.js?v=35',
@@ -10,7 +11,7 @@ const gameScriptSources = [
 ];
 
 for (const src of gameScriptSources) {
-    await loadClassicScript(src);
+    await loadClassicScript(buildAssetUrl(src));
 }
 
 function loadClassicScript(src) {
@@ -22,4 +23,25 @@ function loadClassicScript(src) {
         script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
         document.body.appendChild(script);
     });
+}
+
+function resolveAssetBasePath(value) {
+    const normalizedValue = String(value || '').trim();
+
+    if (!normalizedValue || normalizedValue === '/') {
+        return '/';
+    }
+
+    const withLeadingSlash = normalizedValue.startsWith('/')
+        ? normalizedValue
+        : `/${normalizedValue}`;
+
+    return withLeadingSlash.endsWith('/')
+        ? withLeadingSlash
+        : `${withLeadingSlash}/`;
+}
+
+function buildAssetUrl(relativePath) {
+    const sanitizedPath = String(relativePath || '').replace(/^\/+/, '');
+    return new URL(sanitizedPath, `${window.location.origin}${assetBasePath}`).toString();
 }

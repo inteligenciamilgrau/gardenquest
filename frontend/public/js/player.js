@@ -694,4 +694,80 @@ class Player {
     getPosition() {
         return this.group.position;
     }
+
+    _deepDispose(node) {
+        if (!node) return;
+
+        node.traverse((child) => {
+            if (child.isMesh) {
+                if (child.geometry) {
+                    child.geometry.dispose();
+                }
+
+                if (child.material) {
+                    const materials = Array.isArray(child.material) ? child.material : [child.material];
+                    materials.forEach((mat) => {
+                        const textureSlots = [
+                            'map', 'normalMap', 'roughnessMap', 'metalnessMap', 
+                            'emissiveMap', 'envMap', 'displacementMap', 'aoMap', 
+                            'lightMap', 'alphaMap', 'bumpMap'
+                        ];
+                        
+                        textureSlots.forEach((slot) => {
+                            if (mat[slot] && mat[slot].dispose) {
+                                mat[slot].dispose();
+                            }
+                        });
+
+                        if (typeof mat.dispose === 'function') {
+                            mat.dispose();
+                        }
+                    });
+                }
+            }
+        });
+    }
+
+    destroy() {
+        console.info(`[Player] Destroying player "${this.name}"...`);
+        
+        // Remove from scene
+        if (this.scene && this.group) {
+            this.scene.remove(this.group);
+        }
+
+        // Dispose all materials
+        if (this.materials) {
+            Object.values(this.materials).forEach((mat) => {
+                if (mat && typeof mat.dispose === 'function') {
+                    mat.dispose();
+                }
+            });
+            this.materials = {};
+        }
+
+        if (this.group) {
+            this._deepDispose(this.group);
+            if (this.scene) this.scene.remove(this.group);
+        }
+
+        // Dispose of equipment
+        if (this.swordModel) this._deepDispose(this.swordModel);
+        if (this.bowModel) this._deepDispose(this.bowModel);
+        if (this.arrowModel) this._deepDispose(this.arrowModel);
+        
+        this.group = null;
+        this.swordModel = null;
+        this.bowModel = null;
+        this.arrowModel = null;
+        this.scene = null;
+
+        this.body = null;
+        this.head = null;
+        this.hair = null;
+        this.leftArmPivot = null;
+        this.rightArmPivot = null;
+        this.leftLegPivot = null;
+        this.rightLegPivot = null;
+    }
 }

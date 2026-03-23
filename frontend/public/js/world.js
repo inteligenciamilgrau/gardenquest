@@ -499,8 +499,11 @@ function buildSoccerGrandstandStepSurfaces(fieldState = DEFAULT_SOCCER_FIELD_LAY
 }
 
 class World {
-    constructor(scene, staticWorld = {}) {
+    constructor(scene, options = {}) {
         this.scene = scene;
+        this.mainGroup = new THREE.Group();
+        this.scene.add(this.mainGroup);
+        
         this.trees = [];
         this.apples = [];
         this.applesByTree = new Map();
@@ -519,8 +522,8 @@ class World {
         this.soccerFieldSignature = '';
         this.soccerGoalBanner = null;
         this.soccerGoalBannerVisibleUntil = 0;
-        this.appleOffsets = Array.isArray(staticWorld?.appleLayout) && staticWorld.appleLayout.length > 0
-            ? staticWorld.appleLayout.map((point) => clonePoint(point))
+        this.appleOffsets = Array.isArray(options?.appleLayout) && options.appleLayout.length > 0
+            ? options.appleLayout.map((point) => clonePoint(point))
             : [
                 { x: 1.55, y: 3.85, z: 0.75 },
                 { x: -1.35, y: 4.15, z: 0.95 },
@@ -529,8 +532,8 @@ class World {
                 { x: 0.25, y: 3.75, z: 1.45 },
                 { x: -1.55, y: 4.45, z: -0.15 },
             ];
-        this.treeLayout = Array.isArray(staticWorld?.trees) && staticWorld.trees.length > 0
-            ? staticWorld.trees.map((treeState, index) => ({
+        this.treeLayout = Array.isArray(options?.trees) && options.trees.length > 0
+            ? options.trees.map((treeState, index) => ({
                 id: String(treeState?.id || `tree-${index}`),
                 position: clonePoint(treeState?.position),
             }))
@@ -539,38 +542,38 @@ class World {
                 position: { x: position.x, y: 0, z: position.z },
             }));
         this.lakePosition = new THREE.Vector3(
-            Number(staticWorld?.lake?.position?.x) || 0,
-            Number(staticWorld?.lake?.position?.y) || 0,
-            Number(staticWorld?.lake?.position?.z) || 0
+            Number(options?.lake?.position?.x) || 0,
+            Number(options?.lake?.position?.y) || 0,
+            Number(options?.lake?.position?.z) || 0
         );
-        this.lakeRadius = Number(staticWorld?.lake?.radius) || 6;
-        this.bounds = Number.isFinite(staticWorld?.bounds) && staticWorld.bounds > 0
-            ? staticWorld.bounds
+        this.lakeRadius = Number(options?.lake?.radius) || 6;
+        this.bounds = Number.isFinite(options?.bounds) && options.bounds > 0
+            ? options.bounds
             : 45;
         this.houseLayout = {
             ...HOUSE_LAYOUT,
-            ...(staticWorld?.house
+            ...(options?.house
                 ? {
-                    position: clonePoint(staticWorld.house.position),
-                    width: Number(staticWorld.house.width) || HOUSE_LAYOUT.width,
-                    depth: Number(staticWorld.house.depth) || HOUSE_LAYOUT.depth,
-                    wallHeight: Number(staticWorld.house.wallHeight) || HOUSE_LAYOUT.wallHeight,
-                    wallThickness: Number(staticWorld.house.wallThickness) || HOUSE_LAYOUT.wallThickness,
-                    doorWidth: Number(staticWorld.house.doorWidth) || HOUSE_LAYOUT.doorWidth,
-                    doorHeight: Number(staticWorld.house.doorHeight) || HOUSE_LAYOUT.doorHeight,
+                    position: clonePoint(options.house.position),
+                    width: Number(options.house.width) || HOUSE_LAYOUT.width,
+                    depth: Number(options.house.depth) || HOUSE_LAYOUT.depth,
+                    wallHeight: Number(options.house.wallHeight) || HOUSE_LAYOUT.wallHeight,
+                    wallThickness: Number(options.house.wallThickness) || HOUSE_LAYOUT.wallThickness,
+                    doorWidth: Number(options.house.doorWidth) || HOUSE_LAYOUT.doorWidth,
+                    doorHeight: Number(options.house.doorHeight) || HOUSE_LAYOUT.doorHeight,
                 }
                 : {}),
         };
-        this.houseWallCollisionBoxes = Array.isArray(staticWorld?.house?.collisionBoxes) && staticWorld.house.collisionBoxes.length > 0
-            ? staticWorld.house.collisionBoxes.map((rect) => cloneRect(rect))
+        this.houseWallCollisionBoxes = Array.isArray(options?.house?.collisionBoxes) && options.house.collisionBoxes.length > 0
+            ? options.house.collisionBoxes.map((rect) => cloneRect(rect))
             : buildHouseWallCollisionBoxes(this.houseLayout);
         this.houseTowerElevators = buildHouseTowerElevators(this.houseLayout);
         this.houseStepSurfaces = buildHouseStepSurfaces(this.houseLayout);
-        this.soccerFieldState = staticWorld?.soccerField
+        this.soccerFieldState = options?.soccerField
             ? {
                 ...DEFAULT_SOCCER_FIELD_LAYOUT,
-                ...staticWorld.soccerField,
-                position: clonePoint(staticWorld.soccerField.position),
+                ...options.soccerField,
+                position: clonePoint(options.soccerField.position),
             }
             : {
                 ...DEFAULT_SOCCER_FIELD_LAYOUT,
@@ -642,15 +645,7 @@ class World {
             return;
         }
 
-        this.soccerFieldGroup.traverse((child) => {
-            if (child.material) {
-                child.material.dispose();
-            }
-
-            if (child.geometry) {
-                child.geometry.dispose();
-            }
-        });
+        this._deepDispose(this.soccerFieldGroup);
 
         this.scene.remove(this.soccerFieldGroup);
         this.soccerFieldGroup = null;
@@ -969,7 +964,7 @@ class World {
         this.soccerGrandstandCollisionBoxes = buildSoccerGrandstandCollisionBoxes(fieldState);
         this.soccerGrandstandStepSurfaces = buildSoccerGrandstandStepSurfaces(fieldState);
         this.soccerFieldSignature = this._getSoccerFieldSignature(fieldState);
-        this.scene.add(fieldGroup);
+        this.mainGroup.add(fieldGroup);
     }
 
     syncSoccerState(soccerState) {
@@ -1208,23 +1203,46 @@ class World {
         }
     }
 
+    _deepDispose(node) {
+        if (!node) return;
+
+        node.traverse((child) => {
+            if (child.isMesh) {
+                if (child.geometry) {
+                    child.geometry.dispose();
+                }
+
+                if (child.material) {
+                    const materials = Array.isArray(child.material) ? child.material : [child.material];
+                    materials.forEach((mat) => {
+                        // Dispose of all possible textures in a material
+                        const textureSlots = [
+                            'map', 'normalMap', 'roughnessMap', 'metalnessMap', 
+                            'emissiveMap', 'envMap', 'displacementMap', 'aoMap', 
+                            'lightMap', 'alphaMap', 'bumpMap'
+                        ];
+                        
+                        textureSlots.forEach((slot) => {
+                            if (mat[slot] && mat[slot].dispose) {
+                                mat[slot].dispose();
+                            }
+                        });
+
+                        if (typeof mat.dispose === 'function') {
+                            mat.dispose();
+                        }
+                    });
+                }
+            }
+        });
+    }
+
     _disposeGraveMarker(marker) {
         if (!marker) {
             return;
         }
 
-        marker.traverse((child) => {
-            if (child.material) {
-                if (child.material.map) {
-                    child.material.map.dispose();
-                }
-                child.material.dispose();
-            }
-
-            if (child.geometry) {
-                child.geometry.dispose();
-            }
-        });
+        this._deepDispose(marker);
     }
 
     _createGround() {
@@ -1233,7 +1251,7 @@ class World {
         const ground = new THREE.Mesh(groundGeo, groundMat);
         ground.rotation.x = -Math.PI / 2;
         ground.receiveShadow = true;
-        this.scene.add(ground);
+        this.mainGroup.add(ground);
 
         const pathGeo = new THREE.PlaneGeometry(3.8, 24);
         const pathMat = new THREE.MeshLambertMaterial({ color: 0xb99a65 });
@@ -1241,7 +1259,7 @@ class World {
         path.rotation.x = -Math.PI / 2;
         path.position.set(0, 0.02, 10.4);
         path.receiveShadow = true;
-        this.scene.add(path);
+        this.mainGroup.add(path);
     }
 
     _createSky() {
@@ -1275,7 +1293,7 @@ class World {
             side: THREE.BackSide,
         });
         const sky = new THREE.Mesh(skyGeo, skyMat);
-        this.scene.add(sky);
+        this.mainGroup.add(sky);
 
         for (let i = 0; i < 8; i++) {
             this._createCloud(
@@ -1308,12 +1326,12 @@ class World {
         cloudGroup.position.set(x, y, z);
         cloudGroup.userData.speed = 0.3 + Math.random() * 0.5;
         cloudGroup.userData.isCloud = true;
-        this.scene.add(cloudGroup);
+        this.mainGroup.add(cloudGroup);
     }
 
     _createLighting() {
         const ambient = new THREE.AmbientLight(0xffffff, 0.5);
-        this.scene.add(ambient);
+        this.mainGroup.add(ambient);
 
         const sun = new THREE.DirectionalLight(0xfff4d6, 1.0);
         sun.position.set(20, 30, 10);
@@ -1326,10 +1344,10 @@ class World {
         sun.shadow.camera.right = 30;
         sun.shadow.camera.top = 30;
         sun.shadow.camera.bottom = -30;
-        this.scene.add(sun);
+        this.mainGroup.add(sun);
 
         const hemi = new THREE.HemisphereLight(0x87CEEB, 0x4a9e4a, 0.3);
-        this.scene.add(hemi);
+        this.mainGroup.add(hemi);
     }
 
     _createHouse() {
@@ -1875,7 +1893,7 @@ class World {
         }
 
         houseGroup.position.set(position.x, position.y, position.z);
-        this.scene.add(houseGroup);
+        this.mainGroup.add(houseGroup);
     }
 
     _createLake() {
@@ -1891,14 +1909,14 @@ class World {
         this.lake.rotation.x = -Math.PI / 2;
         this.lake.position.set(this.lakePosition.x, this.lakePosition.y + 0.05, this.lakePosition.z);
         this.lake.receiveShadow = true;
-        this.scene.add(this.lake);
+        this.mainGroup.add(this.lake);
 
         const edgeGeo = new THREE.RingGeometry(this.lakeRadius, this.lakeRadius + 0.8, 32);
         const edgeMat = new THREE.MeshLambertMaterial({ color: 0x3a7a3a });
         const edge = new THREE.Mesh(edgeGeo, edgeMat);
         edge.rotation.x = -Math.PI / 2;
         edge.position.set(this.lakePosition.x, this.lakePosition.y + 0.03, this.lakePosition.z);
-        this.scene.add(edge);
+        this.mainGroup.add(edge);
 
         const rockMat = new THREE.MeshLambertMaterial({ color: 0x888888 });
         for (let i = 0; i < 12; i++) {
@@ -1913,7 +1931,7 @@ class World {
             );
             rock.rotation.set(Math.random(), Math.random(), Math.random());
             rock.castShadow = true;
-            this.scene.add(rock);
+            this.mainGroup.add(rock);
         }
     }
 
@@ -1998,7 +2016,7 @@ class World {
         treeGroup.userData.treeId = treeId;
         this.trees.push(treeGroup);
         this.applesByTree.set(index, treeApples);
-        this.scene.add(treeGroup);
+        this.mainGroup.add(treeGroup);
     }
 
     _createDecorations() {
@@ -2025,13 +2043,13 @@ class World {
             });
             const flower = new THREE.Mesh(flowerGeo, flowerMat);
             flower.position.set(x, 0.15, z);
-            this.scene.add(flower);
+            this.mainGroup.add(flower);
 
             const stemGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.2);
             const stemMat = new THREE.MeshLambertMaterial({ color: 0x2d6b2d });
             const stem = new THREE.Mesh(stemGeo, stemMat);
             stem.position.set(x, 0.08, z);
-            this.scene.add(stem);
+            this.mainGroup.add(stem);
         }
     }
 
@@ -2280,7 +2298,7 @@ class World {
             Number(graveState?.position?.z) || 0
         );
         marker.rotation.y = ((Number(graveState?.position?.x) || 0) * 0.11) % (Math.PI * 2);
-        this.scene.add(marker);
+        this.mainGroup.add(marker);
         return marker;
     }
 
@@ -2323,7 +2341,7 @@ class World {
         appleGroup.rotation.y = Math.random() * Math.PI * 2;
         appleGroup.userData.baseY = appleGroup.position.y;
         appleGroup.userData.floatSeed = Math.random() * Math.PI * 2;
-        this.scene.add(appleGroup);
+        this.mainGroup.add(appleGroup);
         return appleGroup;
     }
 
@@ -2400,7 +2418,7 @@ class World {
         swordGroup.rotation.y = Math.random() * Math.PI * 2;
         swordGroup.userData.baseY = swordGroup.position.y;
         swordGroup.userData.floatSeed = Math.random() * Math.PI * 2;
-        this.scene.add(swordGroup);
+        this.mainGroup.add(swordGroup);
         return swordGroup;
     }
 
@@ -2531,7 +2549,7 @@ class World {
         bowGroup.userData.baseY = bowGroup.position.y;
         bowGroup.userData.floatSeed = Math.random() * Math.PI * 2;
         bowGroup.userData.arrowMeshes = arrowMeshes;
-        this.scene.add(bowGroup);
+        this.mainGroup.add(bowGroup);
         this._updateBowPickupMarker(bowGroup, bowState);
         return bowGroup;
     }
@@ -2660,7 +2678,7 @@ class World {
             Number(arrowState?.position?.z) || 0
         );
         arrowGroup.userData.targetRotationY = Number(arrowState?.rotationY) || 0;
-        this.scene.add(arrowGroup);
+        this.mainGroup.add(arrowGroup);
         return arrowGroup;
     }
 
@@ -2823,5 +2841,31 @@ class World {
             const dist = pos.distanceTo(treePos);
             return dist < radius;
         });
+    }
+
+    destroy() {
+        console.info('[World] Destroying game world via Main Group deep disposal...');
+        
+        // 1. Dispose Soccer Field explicitly if needed (though _deepDispose covers it)
+        this._disposeSoccerField();
+
+        // 2. Deep Dispose the entire Main Group (Ground, Sky, Trees, Apples, Graves, etc.)
+        if (this.mainGroup) {
+            this._deepDispose(this.mainGroup);
+            if (this.scene) this.scene.remove(this.mainGroup);
+        }
+
+        // 3. Clear data collections
+        this.trees = [];
+        this.apples = [];
+        this.applesByTree.clear();
+        this.looseApples.clear();
+        this.looseSwords.clear();
+        this.looseBows.clear();
+        this.arrowProjectiles.clear();
+        this.graves.clear();
+
+        this.mainGroup = null;
+        this.scene = null;
     }
 }

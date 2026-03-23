@@ -191,7 +191,7 @@ class ActionHud {
 }
 
 class ActionSoundboard {
-    constructor() {
+    constructor(options = {}) {
         this.AudioContextCtor = window.AudioContext || window.webkitAudioContext || null;
         this.audioContext = null;
         this.masterGain = null;
@@ -201,9 +201,14 @@ class ActionSoundboard {
         };
 
         if (this.AudioContextCtor) {
-            window.addEventListener('pointerdown', this._unlockHandler, { passive: true });
-            window.addEventListener('keydown', this._unlockHandler, { passive: true });
-            window.addEventListener('touchstart', this._unlockHandler, { passive: true });
+            const listenerOptions = { passive: true };
+            if (options.signal) {
+                listenerOptions.signal = options.signal;
+            }
+            
+            window.addEventListener('pointerdown', this._unlockHandler, listenerOptions);
+            window.addEventListener('keydown', this._unlockHandler, listenerOptions);
+            window.addEventListener('touchstart', this._unlockHandler, listenerOptions);
         }
     }
 
@@ -211,6 +216,24 @@ class ActionSoundboard {
         window.removeEventListener('pointerdown', this._unlockHandler);
         window.removeEventListener('keydown', this._unlockHandler);
         window.removeEventListener('touchstart', this._unlockHandler);
+    }
+
+    destroy() {
+        console.info('[Soundboard] Destroying and closing AudioContext...');
+        this._removeUnlockListeners();
+        
+        if (this.audioContext) {
+            try {
+                if (this.audioContext.state !== 'closed') {
+                    void this.audioContext.close();
+                }
+            } catch (e) {
+                console.warn('[Soundboard] Failed to close AudioContext:', e);
+            }
+            this.audioContext = null;
+        }
+        this.masterGain = null;
+        this.noiseBuffer = null;
     }
 
     _ensureContext() {

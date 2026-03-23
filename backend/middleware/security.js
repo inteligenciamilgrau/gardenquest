@@ -33,7 +33,12 @@ function isAuthRoute(pathname = '') {
 }
 
 function isAiGameRoute(pathname = '') {
-  return pathname.startsWith('/api/v1/ai-game/');
+  return pathname.startsWith('/api/v1/ai-game/')
+    || pathname.startsWith('/api/v1/games/garden-quest/');
+}
+
+function isPlatformRoute(pathname = '') {
+  return pathname.startsWith('/api/v1/platform/');
 }
 
 function normalizeOrigin(value) {
@@ -153,7 +158,7 @@ function setupSecurity(app) {
     allowedHeaders: ['Content-Type', 'Authorization'],
   }));
 
-  app.use(['/auth/logout', '/api/v1/system/sync', '/api/v1/ai-game/command'], (req, res, next) => {
+  app.use(['/auth/logout', '/api/v1/system/sync', '/api/v1/platform/events', '/api/v1/ai-game/command', '/api/v1/games/garden-quest/command'], (req, res, next) => {
     if (!isUnsafeMethod(req.method) || config.NODE_ENV === 'development') {
       return next();
     }
@@ -174,7 +179,7 @@ function setupSecurity(app) {
     max: config.GLOBAL_RATE_LIMIT_MAX,
     error: 'Too many requests. Please try again later.',
     scope: 'global',
-    skip: (req) => req.path === '/health' || isAuthRoute(req.path) || isAiGameRoute(req.path),
+    skip: (req) => req.path === '/health' || isAuthRoute(req.path) || isAiGameRoute(req.path) || isPlatformRoute(req.path),
   });
   app.use(generalLimiter);
 
@@ -202,7 +207,15 @@ function setupSecurity(app) {
     scope: 'ai-public-state',
     skip: (req) => req.method !== 'GET',
   });
-  app.use(['/api/v1/ai-game/bootstrap-state', '/api/v1/ai-game/public-state'], aiPublicStateLimiter);
+  app.use(
+    [
+      '/api/v1/ai-game/bootstrap-state',
+      '/api/v1/ai-game/public-state',
+      '/api/v1/games/garden-quest/bootstrap-state',
+      '/api/v1/games/garden-quest/public-state',
+    ],
+    aiPublicStateLimiter
+  );
 
   const aiCommandLimiter = buildJsonRateLimiter({
     windowMs: config.AI_COMMAND_RATE_LIMIT_WINDOW_MS,
@@ -211,7 +224,7 @@ function setupSecurity(app) {
     scope: 'ai-command',
     skip: (req) => req.method !== 'POST',
   });
-  app.use('/api/v1/ai-game/command', aiCommandLimiter);
+  app.use(['/api/v1/ai-game/command', '/api/v1/games/garden-quest/command'], aiCommandLimiter);
 
   // Disable X-Powered-By
   app.disable('x-powered-by');

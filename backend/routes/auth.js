@@ -39,7 +39,7 @@ function normalizeEmail(value) {
   return trimmed || null;
 }
 
-function normalizeFrontendPath(value, fallbackPath = '/game.html') {
+function normalizeFrontendPath(value, fallbackPath = '/hub.html') {
   if (typeof value !== 'string' || !value.trim()) {
     return fallbackPath;
   }
@@ -97,7 +97,7 @@ function encodeOAuthState({ frontendPath, nonce }) {
   return Buffer.from(statePayload, 'utf8').toString('base64url');
 }
 
-function decodeOAuthState(value, fallbackPath = '/game.html') {
+function decodeOAuthState(value, fallbackPath = '/hub.html') {
   if (typeof value !== 'string' || !value.trim()) {
     return {
       redirectPath: fallbackPath,
@@ -219,7 +219,7 @@ function createAuthRoutes({ gameEngine = null } = {}) {
 
   router.get('/google', (req, res) => {
     trackSilentEvent(req, 'login_start');
-    const redirectPath = normalizeFrontendPath(req.query?.redirect, '/game.html');
+    const redirectPath = normalizeFrontendPath(req.query?.redirect, '/hub.html');
     const stateNonce = generateOAuthStateNonce();
 
     const oauth2Client = getOAuth2Client();
@@ -242,7 +242,7 @@ function createAuthRoutes({ gameEngine = null } = {}) {
 
   router.get('/callback', async (req, res) => {
     const { code, state } = req.query;
-    const decodedState = decodeOAuthState(state, '/game.html');
+    const decodedState = decodeOAuthState(state, '/hub.html');
     const expectedStateNonce = normalizeStateNonce(req.cookies?.[OAUTH_STATE_COOKIE_NAME]);
 
     res.clearCookie(OAUTH_STATE_COOKIE_NAME, getClearOAuthStateCookieOptions());

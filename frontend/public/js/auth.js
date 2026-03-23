@@ -39,7 +39,7 @@ async function logout() {
         console.error('Logout error:', err);
     }
 
-    window.location.replace('index.html');
+    window.location.replace('/index.html');
 }
 
 function sanitize(str) {

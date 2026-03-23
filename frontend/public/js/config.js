@@ -57,5 +57,5 @@ function resolveLocalApiUrlOverride() {
 
 window.API_URL =
     isLocalHostname(window.location.hostname)
-        ? resolveLocalApiUrlOverride() || 'http://localhost:8080'
+        ? resolveLocalApiUrlOverride() || window.location.origin
         : '';

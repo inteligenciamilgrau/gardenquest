@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="IMG Platform - Hub de jogos com login unificado">
+    <title>IMG Platform - Hub</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#127807;</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/hub.css?v=1">
+</head>
+<body>
+    <div class="bg-particles" id="bgParticles"></div>
+    <div class="hub-shell">
+        <header class="hub-topbar">
+            <div class="hub-brand">
+                <div class="hub-brand-mark">&#127807;</div>
+                <div class="hub-brand-copy">
+                    <p class="hub-brand-eyebrow">Platform Hub</p>
+                    <h1 class="hub-brand-title">IMG Platform</h1>
+                    <p class="hub-brand-subtitle">Um login, um hub, varios jogos no mesmo ecossistema.</p>
+                </div>
+            </div>
+
+            <div class="hub-user-panel">
+                <img class="hub-user-avatar" id="hubUserAvatar" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="Avatar do usuario">
+                <div class="hub-user-meta">
+                    <p class="hub-user-name" id="hubUserName">Carregando usuario</p>
+                </div>
+                <div class="hub-user-actions">
+                    <a class="hub-link-btn" id="hubAdminLink" href="/dashboard.html" hidden>Painel admin</a>
+                    <button class="hub-ghost-btn" id="hubLogoutBtn" type="button">Sair da plataforma</button>
+                </div>
+            </div>
+        </header>
+
+        <main class="hub-main">
+            <section class="hub-section">
+                <div class="hub-section-header">
+                    <div>
+                        <h2 class="hub-section-title">Jogos da plataforma</h2>
+                        <p class="hub-section-copy">Explore os mundos ativos no ecossistema IMG.</p>
+                    </div>
+                </div>
+
+                <div class="hub-state-card" id="hubLoadingState">
+                    <h3 class="hub-state-title">Carregando catalogo</h3>
+                    <p class="hub-state-copy">Buscando sua sessao e a lista de jogos ativos na plataforma.</p>
+                </div>
+
+                <div class="hub-state-card" id="hubErrorState" hidden>
+                    <h3 class="hub-state-title">Nao foi possivel carregar o hub</h3>
+                    <p class="hub-state-copy">Verifique a conexao com o backend ou tente novamente.</p>
+                    <button class="hub-retry-btn" id="hubRetryBtn" type="button">Tentar de novo</button>
+                </div>
+
+                <div class="hub-state-card" id="hubEmptyState" hidden>
+                    <h3 class="hub-state-title">Nenhum jogo publicado ainda</h3>
+                    <p class="hub-state-copy">A estrutura da plataforma esta pronta. Basta registrar o proximo modulo no catalogo.</p>
+                </div>
+
+                <div class="games-grid" id="gamesGrid"></div>
+            </section>
+
+            <section class="hub-hero">
+                <aside class="hub-hero-status">
+                    <div class="hub-status-grid">
+                        <article class="hub-stat-card">
+                            <p class="hub-stat-label">Catalogo ativo</p>
+                            <p class="hub-stat-value">1</p>
+                            <p class="hub-stat-copy">Titulos disponiveis hoje.</p>
+                        </article>
+                        <article class="hub-stat-card">
+                            <p class="hub-stat-label">Proximo passo</p>
+                            <p class="hub-stat-value">Football</p>
+                            <p class="hub-stat-copy">Em breve novo modulo.</p>
+                        </article>
+                    </div>
+                </aside>
+            </section>
+        </main>
+    </div>
+
+    <script src="js/config.js?v=13"></script>
+    <script src="js/auth.js?v=12"></script>
+    <script src="js/platform-sdk.js?v=1"></script>
+    <script src="js/hub.js?v=1"></script>
+</body>
+</html>

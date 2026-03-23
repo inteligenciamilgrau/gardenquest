@@ -1,4 +1,222 @@
 (async function () {
+    const GAME_CONFIG = Object.freeze({
+        slug: typeof window.PLATFORM_GAME_CONFIG?.slug === 'string' && window.PLATFORM_GAME_CONFIG.slug.trim()
+            ? window.PLATFORM_GAME_CONFIG.slug.trim()
+            : 'garden-quest',
+        hubPath: typeof window.PLATFORM_GAME_CONFIG?.hubPath === 'string' && window.PLATFORM_GAME_CONFIG.hubPath.trim()
+            ? window.PLATFORM_GAME_CONFIG.hubPath.trim()
+            : '/hub.html',
+        loginPath: typeof window.PLATFORM_GAME_CONFIG?.loginPath === 'string' && window.PLATFORM_GAME_CONFIG.loginPath.trim()
+            ? window.PLATFORM_GAME_CONFIG.loginPath.trim()
+            : '/index.html',
+        apiBasePath: typeof window.PLATFORM_GAME_CONFIG?.apiBasePath === 'string' && window.PLATFORM_GAME_CONFIG.apiBasePath.trim()
+            ? window.PLATFORM_GAME_CONFIG.apiBasePath.trim()
+            : '/api/v1/ai-game',
+    });
+    
+    let isGameRunning = true;
+    let movementSyncInterval = null;
+    let statePollTimeout = null;
+    let heldMovementFlushTimeout = null;
+    let loadingScreenTimeout = null;
+    let animationId = null;
+    let renderer = null;
+    let memoryHeartbeatInterval = null;
+    let isGameCleanedUp = false;
+    
+    // MASTER CLEANUP CONTROLLER: The only way to truly "kill" all window/document listeners
+    const cleanupController = new AbortController();
+    const cleanupSignal = { signal: cleanupController.signal };
+
+    // MALICIOUS LEAK DETECTOR: Proper variable assignment to allow cleanup
+    let leakDetectorInterval = setInterval(() => {
+        if (isGameCleanedUp) {
+            console.error('[LEAK-DETECTED] ⚠️ Malicious thread is STILL ALIVE after cleanup!');
+            window.Platform?.trackEvent?.({
+                event: 'DEBUG_FATAL_LEAK',
+                details: 'Game closure still executing tasks after cleanup.'
+            }).catch(() => {});
+        }
+    }, 2000);
+
+    // Heartbeat with Freeze Detector and Memory Monitoring
+    let gameHeartbeatInterval = setInterval(() => {
+        if (!isGameRunning) return;
+
+        let jsHeap = 'N/A';
+        if (window.performance && window.performance.memory) {
+            const mem = window.performance.memory;
+            jsHeap = `${(mem.usedJSHeapSize / 1024 / 1024).toFixed(2)}MB / ${(mem.totalJSHeapSize / 1024 / 1024).toFixed(2)}MB`;
+        }
+        console.log(`[GAME-HEARTBEAT] 🎮 Alive at ${new Date().toLocaleTimeString()} | 🧠 Memory: ${jsHeap}`);
+    }, 1000);
+
+    function logMemoryUsage() {
+        if (!isGameRunning || !renderer) return;
+
+        const memInfo = renderer.info.memory;
+        const renderInfo = renderer.info.render;
+        const programsInfo = renderer.info.programs?.length || 0;
+        
+        let jsHeap = 'N/A';
+        if (window.performance && window.performance.memory) {
+            const mem = window.performance.memory;
+            const toMB = (bytes) => (bytes / (1024 * 1024)).toFixed(2);
+            jsHeap = `${toMB(mem.usedJSHeapSize)}MB / ${toMB(mem.totalJSHeapSize)}MB (Limit: ${toMB(mem.jsHeapSizeLimit)}MB)`;
+        }
+
+        console.group(`[MEMORY-LOGGER] 📊 ${new Date().toLocaleTimeString()}`);
+        console.log(`%cJS Heap: %c${jsHeap}`, 'font-weight: bold', 'color: #3b82f6');
+        console.log(`%cThree.js Memory: %cGeometries: ${memInfo.geometries}, Textures: ${memInfo.textures}, Programs: ${programsInfo}`, 'font-weight: bold', 'color: #10b981');
+        console.log(`%cThree.js Render: %cCalls: ${renderInfo.calls}, Triangles: ${renderInfo.triangles}, Points: ${renderInfo.points}, Lines: ${renderInfo.lines}`, 'font-weight: bold', 'color: #f59e0b');
+        console.groupEnd();
+    }
+
+    memoryHeartbeatInterval = setInterval(logMemoryUsage, 30000);
+
+    function getGameApiUrl(path = '') {
+        return `${getApiUrl()}${GAME_CONFIG.apiBasePath}${path}`;
+    }
+
+    function redirectToLogin() {
+        window.location.replace(GAME_CONFIG.loginPath);
+    }
+
+    function goToHub() {
+        console.info('[Game] Navigating to Hub with NUCLEAR RELOAD and GPU RESET...');
+        
+        // 1. Start cleanup immediately
+        cleanupGame();
+        
+        // 2. Clear platform cache to force fresh bootstrap on return
+        if (window.Platform && typeof window.Platform.getBootstrap === 'function') {
+            console.debug('[Game] Clearing Platform bootstrap cache...');
+            // Assuming we can't directly nullify internal cache, but we will force refresh in hub.js
+        }
+
+        // 3. Give the browser more time to actually run the GC and release GPU before navigation
+        setTimeout(() => {
+            const hubWithCacheBust = `${GAME_CONFIG.hubPath}?t=${Date.now()}&ref=game_exit`;
+            
+            console.info('[Game] Triggering navigation to Hub...');
+            if (window.Platform?.backToHub) {
+                try {
+                    window.Platform.backToHub({ replace: true });
+                    return;
+                } catch (e) {
+                    console.error('[Game] Platform.backToHub retry-fail', e);
+                }
+            }
+            window.location.replace(hubWithCacheBust);
+        }, 500); // Increased delay slightly
+    }
+
+    function cleanupGame() {
+        if (isGameCleanedUp) return;
+        console.info('[Game] %c>>> STARTING NUCLEAR CLEANUP <<<', 'color: #f87171; font-weight: bold; font-size: 1.2em;');
+        
+        isGameRunning = false;
+        isGameCleanedUp = true;
+
+        // 1. Clear all Intervals/Timeouts
+        console.debug('[Cleanup] Clearing loops and timers...');
+        if (gameHeartbeatInterval) clearInterval(gameHeartbeatInterval);
+        if (memoryHeartbeatInterval) clearInterval(memoryHeartbeatInterval);
+        if (leakDetectorInterval) clearInterval(leakDetectorInterval);
+        if (animationId) cancelAnimationFrame(animationId);
+        if (movementSyncInterval) clearInterval(movementSyncInterval);
+        if (statePollTimeout) clearTimeout(statePollTimeout);
+        if (heldMovementFlushTimeout) clearTimeout(heldMovementFlushTimeout);
+        if (loadingScreenTimeout) clearTimeout(loadingScreenTimeout);
+
+        // 2. Kill World and Global Entities
+        console.debug('[Cleanup] Destroying game entities...');
+        if (world && typeof world.destroy === 'function') {
+            world.destroy();
+        }
+        if (localPlayer && typeof localPlayer.destroy === 'function') {
+            localPlayer.destroy();
+        }
+        if (aiPlayer && typeof aiPlayer.destroy === 'function') {
+            aiPlayer.destroy();
+        }
+        
+        // 3. Kill Remote Players
+        if (remotePlayers && remotePlayers.size > 0) {
+            console.debug(`[Cleanup] Cleaning up ${remotePlayers.size} remote players...`);
+            remotePlayers.forEach((p) => {
+                if (p && typeof p.destroy === 'function') p.destroy();
+            });
+            remotePlayers.clear();
+        }
+
+        // 4. Kill Soundboard (Hardware Audio)
+        if (actionSoundboard) {
+            console.debug('[Cleanup] Killing soundboard...');
+            if (typeof actionSoundboard.destroy === 'function') {
+                actionSoundboard.destroy();
+            }
+        }
+
+        // 5. Nuclear Renderer Disposal (The GPU context is critical)
+        if (renderer) {
+            console.info('[Cleanup] %cDisposing WebGL renderer and forcing GPU context loss...', 'color: #fb923c');
+            try {
+                renderer.setAnimationLoop(null);
+                
+                // Unbind all textures and geoms from GPU
+                if (renderer.renderLists) renderer.renderLists.dispose();
+                
+                // Force loss of context to ensure GPU memory is purged immediately
+                const gl = renderer.getContext();
+                const extension = gl.getExtension('WEBGL_lose_context');
+                if (extension) {
+                    console.warn('[Cleanup] WEBGL_lose_context extension found, losing context now.');
+                    extension.loseContext();
+                }
+
+                renderer.dispose();
+                
+                if (renderer.domElement && renderer.domElement.parentNode) {
+                    renderer.domElement.parentNode.removeChild(renderer.domElement);
+                }
+            } catch (e) {
+                console.error('[Cleanup] Error during nuclear renderer disposal:', e);
+            }
+        }
+
+        // 6. ATOMIC EVENT CLEANUP
+        console.debug('[Cleanup] Aborting all event listeners...');
+        cleanupController.abort();
+
+        // 7. NULLIFY EVERYTHING for GC
+        console.debug('[Cleanup] Nullifying global references...');
+        renderer = null;
+        world = null;
+        localPlayer = null;
+        aiPlayer = null;
+        remotePlayers = null;
+        actionSoundboard = null;
+
+        console.log('%c[Game] >>> NUCLEAR CLEANUP COMPLETE <<<', 'color: #4ade80; font-weight: bold;');
+    }
+
+    /**
+     * Suppression of BFCache (Back-Forward Cache) to prevent memory accumulation
+     * and force synchronous cleanup when the user navigates away.
+     */
+    window.addEventListener('pageshow', (event) => {
+        if (event.persisted) {
+            console.warn('[BFCache] Page restored from cache, forcing hard reload...');
+            window.location.reload();
+        }
+    }, { signal: cleanupController.signal });
+
+    window.addEventListener('beforeunload', () => {
+        console.info('[Game] beforeunload triggered, forcing synchronous cleanup...');
+        cleanupGame();
+    });
+
     const user = await checkAuth();
     if (!user || user.error) {
         document.body.innerHTML = `
@@ -6,7 +224,7 @@
                 <h2>Acesso negado</h2>
                 <p>Por favor, faca login novamente.</p>
                 <br>
-                <button onclick="window.location.href='index.html'" style="padding: 10px 20px; font-size: 16px;">Ir para Login</button>
+                <button onclick="window.location.href='${GAME_CONFIG.loginPath}'" style="padding: 10px 20px; font-size: 16px;">Ir para Login</button>
             </div>
         `;
         return;
@@ -80,12 +298,23 @@
     let didAttemptStoredProfileMigration = false;
 
     if (hudName) hudName.textContent = initialProfile.nickname || 'Jogador';
-    if (hudAvatar && user.picture) hudAvatar.src = user.picture;
+    if (hudAvatar) {
+        console.debug('[Game] Setting HUD avatar...');
+        if (user.picture) {
+            hudAvatar.src = user.picture;
+        }
+        hudAvatar.onerror = () => {
+            console.warn('[Game] HUD avatar load failed, using fallback.');
+            hudAvatar.onerror = null;
+            const fallbackName = encodeURIComponent(user.name || 'Player');
+            hudAvatar.src = `https://ui-avatars.com/api/?name=${fallbackName}&background=random`;
+        };
+    }
     if (profileNicknameInput) profileNicknameInput.value = initialProfile.nickname || '';
     if (profileColorInput) profileColorInput.value = initialProfile.outfitColor;
     if (profileColorValue) profileColorValue.textContent = initialProfile.outfitColor;
 
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
@@ -1401,13 +1630,13 @@
     }
 
     async function fetchBootstrapState() {
-        const response = await fetch(`${getApiUrl()}/api/v1/ai-game/bootstrap-state`, {
+        const response = await fetch(getGameApiUrl('/bootstrap-state'), {
             cache: 'no-store',
             credentials: 'include',
         });
 
         if (response.status === 401) {
-            window.location.replace('index.html');
+            redirectToLogin();
             return null;
         }
 
@@ -1428,12 +1657,12 @@
     const initialWorldState = bootstrapState?.world || {};
     const initialSettings = bootstrapState?.settings || {};
 
-    const world = new World(scene, initialWorldState);
+    let world = new World(scene, initialWorldState);
     const actionHud = new ActionHud();
-    const actionSoundboard = new ActionSoundboard();
+    let actionSoundboard = new ActionSoundboard({ signal: cleanupController.signal });
     const initialPalette = buildAppearancePalette(initialProfile);
 
-    const localPlayer = new Player(scene, initialProfile.nickname, {
+    let localPlayer = new Player(scene, initialProfile.nickname, {
         spawnPosition: { x: -8, y: 0, z: 26 },
         shirtColor: initialPalette.shirtColor,
         pantsColor: initialPalette.pantsColor,
@@ -1452,7 +1681,7 @@
         showVitals: false,
     });
 
-    const aiPlayer = new Player(scene, 'Jardineiro IA', {
+    let aiPlayer = new Player(scene, 'Jardineiro IA', {
         spawnPosition: { x: -3, y: 0, z: 15 },
         shirtColor: 0x16a34a,
         pantsColor: 0x14532d,
@@ -1468,7 +1697,7 @@
         maxCloseDistance: 15,
     });
 
-    const remotePlayers = new Map();
+    let remotePlayers = new Map();
     const playerFocus = new THREE.Vector3();
     const scenicFocus = new THREE.Vector3();
     const lookTarget = new THREE.Vector3();
@@ -1514,8 +1743,6 @@
     let lastDispatchedMovementInput = { moveX: 0, moveZ: 0, isRunning: false };
     let heldMovementInput = { moveX: 0, moveZ: 0, isRunning: false };
     let heldMovementReleaseAtMs = 0;
-    let heldMovementFlushTimeout = null;
-    let statePollTimeout = null;
     let unreadChatCount = 0;
     let lastChatEntryId = 0;
     let hasRenderedPlayerChat = false;
@@ -1662,12 +1889,13 @@
         }
 
         statePollTimeout = window.setTimeout(() => {
+            if (!isGameRunning) return;
             fetchGameState();
         }, delayMs);
     }
 
     async function sendCommand(type, payload = {}, { suppressErrorToast = false } = {}) {
-        const response = await fetch(`${getApiUrl()}/api/v1/ai-game/command`, {
+        const response = await fetch(getGameApiUrl('/command'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
@@ -2740,14 +2968,14 @@
         let nextDelayMs = STATE_POLL_INTERVAL_MS;
 
         try {
-            const response = await fetch(`${getApiUrl()}/api/v1/ai-game/public-state`, {
+            const response = await fetch(getGameApiUrl('/public-state'), {
                 cache: 'no-store',
                 credentials: 'include',
             });
 
             if (response.status === 401) {
                 shouldScheduleNext = false;
-                window.location.replace('index.html');
+                redirectToLogin();
                 return;
             }
 
@@ -2786,26 +3014,27 @@
     });
     canvas.addEventListener('click', requestPointerLock);
     canvas.addEventListener('pointerdown', handleTouchLookStart);
-    document.addEventListener('pointerlockchange', handlePointerLockChange);
-    document.addEventListener('pointerlockerror', handlePointerLockError);
-    window.addEventListener('mousemove', moveLockedCamera);
-    window.addEventListener('pointermove', handleTouchLookMove);
-    window.addEventListener('pointerup', handleTouchLookEnd);
-    window.addEventListener('pointercancel', handleTouchLookEnd);
+    document.addEventListener('pointerlockchange', handlePointerLockChange, cleanupSignal);
+    document.addEventListener('pointerlockerror', handlePointerLockError, cleanupSignal);
+    window.addEventListener('mousemove', moveLockedCamera, cleanupSignal);
+    window.addEventListener('pointermove', handleTouchLookMove, cleanupSignal);
+    window.addEventListener('pointerup', handleTouchLookEnd, cleanupSignal);
+    window.addEventListener('pointercancel', handleTouchLookEnd, cleanupSignal);
     canvas.addEventListener('wheel', zoomCamera, { passive: false });
 
     window.addEventListener('resize', () => {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
-    });
+    }, cleanupSignal);
 
     const clock = new THREE.Clock();
     let elapsedTime = 0;
 
     if (loadingScreen) {
-        setTimeout(() => {
+        loadingScreenTimeout = setTimeout(() => {
             loadingScreen.classList.add('hidden');
+            loadingScreenTimeout = null;
         }, 500);
     }
 
@@ -2813,10 +3042,11 @@
     updateCamera(0, true);
 
     fetchGameState();
-    setInterval(flushMovementInput, INPUT_SYNC_INTERVAL_MS);
+    movementSyncInterval = setInterval(flushMovementInput, INPUT_SYNC_INTERVAL_MS);
 
     function animate() {
-        requestAnimationFrame(animate);
+        if (!isGameRunning) return;
+        animationId = requestAnimationFrame(animate);
 
         const delta = Math.min(clock.getDelta(), 0.05);
         elapsedTime += delta;
@@ -2892,4 +3122,25 @@
     if (logoutBtn) {
         logoutBtn.addEventListener('click', logout);
     }
+
+    const hubBtn = document.getElementById('hubBtn');
+    if (hubBtn) {
+        hubBtn.addEventListener('click', async () => {
+            // Start cleanup immediately to free CPU
+            cleanupGame();
+            
+            // Try to track the event (best effort)
+            try {
+                await window.Platform?.trackEvent?.({
+                    event: 'platform_back_to_hub',
+                    gameSlug: GAME_CONFIG.slug,
+                });
+            } catch (err) {}
+            
+            goToHub();
+        });
+    }
+
+    // Safety fallback for unexpected navigation
+    window.addEventListener('beforeunload', cleanupGame, cleanupSignal);
 })();

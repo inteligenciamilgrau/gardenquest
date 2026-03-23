@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Garden Quest - Explore o jardim magico">
+    <title>Garden Quest - 3D</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#127795;</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/game.css?v=31">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+</head>
+<body>
+    <div class="loading-screen" id="loadingScreen">
+        <div class="loading-spinner"></div>
+        <p class="loading-text">Carregando o jardim...</p>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div class="hud-top">
+        <div class="hud-player">
+            <img class="hud-avatar" id="hudAvatar" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="Avatar">
+            <span class="hud-name" id="hudName">Jogador</span>
+        </div>
+        <div class="hud-actions">
+            <button class="btn-secondary" id="hubBtn" type="button">Voltar ao hub</button>
+            <div class="hud-menu-tabs">
+                <button class="hud-menu-tab" id="commandsToggleBtn" type="button" aria-expanded="false" aria-controls="commandsPanel">Comandos</button>
+                <button class="hud-menu-tab" id="profileToggleBtn" type="button" aria-expanded="false" aria-controls="profilePanel">Perfil</button>
+            </div>
+            <button class="btn-logout" id="logoutBtn">Sair</button>
+        </div>
+    </div>
+
+    <aside class="commands-panel" id="commandsPanel" hidden>
+        <div class="commands-header">
+            <div>
+                <p class="commands-title">Comandos do jogo</p>
+                <p class="commands-copy">Atalhos para se mover, interagir e usar o chat.</p>
+            </div>
+            <button class="commands-close" id="commandsCloseBtn" type="button" aria-label="Fechar painel de comandos">Fechar</button>
+        </div>
+
+        <div class="commands-list">
+            <div class="command-row">
+                <div class="command-keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></div>
+                <span class="command-description">Mover pelo jardim</span>
+            </div>
+            <div class="command-row">
+                <div class="command-keys"><kbd>Click</kbd></div>
+                <span class="command-description">Travar o mouse na tela</span>
+            </div>
+            <div class="command-row">
+                <div class="command-keys"><kbd>Mouse</kbd></div>
+                <span class="command-description">Girar a camera</span>
+            </div>
+            <div class="command-row">
+                <div class="command-keys"><kbd>Scroll</kbd></div>
+                <span class="command-description">Ajustar o zoom</span>
+            </div>
+            <div class="command-row">
+                <div class="command-keys"><kbd>Shift</kbd></div>
+                <span class="command-description">Correr</span>
+            </div>
+            <div class="command-row">
+                <div class="command-keys"><kbd>Espaco</kbd></div>
+                <span class="command-description">Pular</span>
+            </div>
+            <div class="command-row">
+                <div class="command-keys"><kbd>Esc</kbd></div>
+                <span class="command-description">Soltar o mouse ou fechar o painel</span>
+            </div>
+            <div class="command-row">
+                <div class="command-keys"><kbd>E</kbd></div>
+                <span class="command-description">Usar interacoes, atacar com espada ou atirar com o arco</span>
+            </div>
+            <div class="command-row">
+                <div class="command-keys"><kbd>F</kbd></div>
+                <span class="command-description">Pegar ou soltar item da mao</span>
+            </div>
+            <div class="command-row">
+                <div class="command-keys"><kbd>T</kbd></div>
+                <span class="command-description">Abrir o chat</span>
+            </div>
+        </div>
+    </aside>
+
+    <aside class="profile-panel" id="profilePanel" hidden>
+        <form class="profile-form" id="profileForm">
+            <div class="profile-header">
+                <div>
+                    <p class="profile-title">Identidade no jogo</p>
+                    <p class="profile-copy">Seu nome real fica fora do jogo. Use um apelido ficticio.</p>
+                </div>
+                <button class="profile-close" id="profileCloseBtn" type="button" aria-label="Fechar editor de perfil">Fechar</button>
+            </div>
+
+            <label class="profile-field" for="profileNicknameInput">
+                <span>Apelido ficticio</span>
+                <input
+                    class="profile-input"
+                    id="profileNicknameInput"
+                    type="text"
+                    maxlength="24"
+                    autocomplete="off"
+                    placeholder="Ex.: Guardiao do Lago"
+                >
+            </label>
+
+            <label class="profile-field" for="profileColorInput">
+                <span>Cor da roupa</span>
+                <div class="profile-color-row">
+                    <input class="profile-color-input" id="profileColorInput" type="color" value="#2563eb">
+                    <span class="profile-color-value" id="profileColorValue">#2563eb</span>
+                </div>
+            </label>
+
+            <p class="profile-note">O apelido nao pode ser igual ao seu nome real.</p>
+            <p class="profile-status" id="profileStatus" aria-live="polite"></p>
+
+            <div class="profile-actions">
+                <button class="btn-secondary profile-save-btn" id="profileSaveBtn" type="submit">Salvar perfil</button>
+            </div>
+        </form>
+    </aside>
+
+    <div class="hud-inventory">
+        <div class="inv-slot">
+            <span class="inv-icon">&#11088;</span>
+            <span class="inv-label">Score</span>
+            <span class="inv-value" id="scoreValue">0</span>
+        </div>
+        <div class="inv-slot">
+            <span class="inv-icon">&#127822;</span>
+            <span class="inv-label">Macas</span>
+            <span class="inv-value" id="applesCount">0</span>
+        </div>
+        <div class="inv-slot">
+            <span class="inv-icon">&#127993;</span>
+            <span class="inv-label">Flechas</span>
+            <span class="inv-value" id="arrowsCount">0</span>
+        </div>
+        <div class="inv-slot">
+            <span class="inv-icon">&#127828;</span>
+            <span class="inv-label">Comida</span>
+            <span class="inv-value" id="foodLevel">100%</span>
+        </div>
+        <div class="inv-slot">
+            <span class="inv-icon">&#128167;</span>
+            <span class="inv-label">Agua</span>
+            <span class="inv-value" id="waterLevel">100%</span>
+        </div>
+    </div>
+
+    <div class="action-prompt" id="actionPrompt"></div>
+    <div class="floating-msg" id="floatingMsg"></div>
+    <div class="system-notice" id="systemNotice"></div>
+
+    <aside class="leaderboard-panel" id="leaderboardPanel">
+        <div class="leaderboard-header">
+            <span class="leaderboard-title">Recordes do servidor</span>
+            <button class="leaderboard-minimize-btn" id="leaderboardMinimizeBtn" type="button" aria-expanded="true" aria-controls="leaderboardSections" aria-label="Minimizar recordes">-</button>
+        </div>
+
+        <div class="leaderboard-sections" id="leaderboardSections">
+            <section class="leaderboard-section">
+                <div class="leaderboard-section-header">
+                    <span class="leaderboard-section-title">Top 5 Pontos</span>
+                    <span class="leaderboard-subtitle" id="leaderboardUpdated">Aguardando...</span>
+                </div>
+                <div class="leaderboard-table-wrap">
+                    <table class="leaderboard-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Nome</th>
+                                <th>Tipo</th>
+                                <th>Recorde</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderboardBody">
+                            <tr>
+                                <td colspan="4" class="leaderboard-empty">Carregando recordes...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="leaderboard-section">
+                <div class="leaderboard-section-header">
+                    <span class="leaderboard-section-title">Top 5 Gols</span>
+                    <span class="leaderboard-subtitle" id="soccerLeaderboardUpdated">Aguardando...</span>
+                </div>
+                <div class="leaderboard-table-wrap">
+                    <table class="leaderboard-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Nome</th>
+                                <th>Tipo</th>
+                                <th>Gols</th>
+                            </tr>
+                        </thead>
+                        <tbody id="soccerLeaderboardBody">
+                            <tr>
+                                <td colspan="4" class="leaderboard-empty">Carregando artilharia...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </aside>
+
+    <aside class="chat-widget" id="chatWidget">
+        <button class="chat-collapsed-toggle" id="chatCollapsedToggle" type="button" aria-expanded="false" hidden>
+            <span>Chat dos jogadores</span>
+            <span class="chat-collapsed-badge" id="chatCollapsedBadge" hidden>0</span>
+        </button>
+
+        <div class="chat-panel" id="chatPanel">
+            <div class="chat-header">
+                <div class="chat-title-wrap">
+                    <span class="chat-title">Chat dos jogadores</span>
+                    <span class="chat-subtitle">A conversa da IA nao aparece aqui.</span>
+                </div>
+                <div class="chat-header-actions">
+                    <span class="chat-counter" id="chatCounter">0/72</span>
+                    <button class="chat-minimize-btn" id="chatMinimizeBtn" type="button" aria-label="Minimizar chat">-</button>
+                </div>
+            </div>
+
+            <div class="chat-feed" id="chatFeed">
+                <p class="chat-empty">As mensagens dos jogadores aparecem aqui.</p>
+            </div>
+
+            <form class="chat-form" id="chatForm">
+                <input
+                    class="chat-input"
+                    id="chatInput"
+                    type="text"
+                    maxlength="72"
+                    autocomplete="off"
+                    placeholder="Digite e pressione Enter"
+                >
+                <p class="chat-help">T abre para digitar. Esc sai da escrita.</p>
+            </form>
+        </div>
+    </aside>
+
+    <aside class="mobile-controls" id="mobileControls" hidden aria-label="Controles de movimento mobile">
+        <div class="mobile-dpad">
+            <button class="mobile-move-btn mobile-move-up" data-key="w" type="button" aria-label="Mover para frente">▲</button>
+            <button class="mobile-move-btn mobile-move-left" data-key="a" type="button" aria-label="Mover para esquerda">◀</button>
+            <button class="mobile-move-btn mobile-move-right" data-key="d" type="button" aria-label="Mover para direita">▶</button>
+            <button class="mobile-move-btn mobile-move-down" data-key="s" type="button" aria-label="Mover para tras">▼</button>
+        </div>
+
+        <div class="mobile-actions">
+            <button class="mobile-action-btn mobile-action-e" data-key="e" type="button" aria-label="Interagir / Atacar">E</button>
+            <button class="mobile-action-btn mobile-action-f" data-key="f" type="button" aria-label="Pegar / Soltar">F</button>
+            <button class="mobile-action-btn mobile-action-jump" data-key=" " type="button" aria-label="Pular">Pulo</button>
+        </div>
+    </aside>
+
+    <script>
+        window.PLATFORM_GAME_CONFIG = Object.freeze({
+            slug: 'garden-quest',
+            name: 'Garden Quest',
+            gamePath: '/games/garden-quest/',
+            hubPath: '/hub.html',
+            loginPath: '/index.html',
+            apiBasePath: '/api/v1/games/garden-quest',
+            assetBasePath: '/',
+        });
+    </script>
+    <script src="/js/config.js?v=13"></script>
+    <script src="/js/auth.js?v=12"></script>
+    <script src="/js/platform-sdk.js?v=1"></script>
+    <script type="module" src="/js/game-loader.js?v=31"></script>
+</body>
+</html>

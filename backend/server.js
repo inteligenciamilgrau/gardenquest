@@ -2,6 +2,7 @@ const express = require('express');
 const { setupSecurity } = require('./middleware/security');
 const createAuthRoutes = require('./routes/auth');
 const createAiGameRoutes = require('./routes/ai-game');
+const createPlatformRoutes = require('./routes/platform');
 const config = require('./config');
 const { verifyDatabaseConnection } = require('./database/postgres');
 const { AiGameEngine } = require('./game/engine');
@@ -12,6 +13,40 @@ const aiGameEngine = new AiGameEngine();
 // Trust Cloud Run proxy for secure cookies
 app.set('trust proxy', 1);
 
+// Server-side Heartbeat to confirm process is alive
+if (config.NODE_ENV === 'development' || config.APP_ENV === 'local') {
+    setInterval(() => {
+        console.log(`[SERVER-HEARTBEAT] ⚙️ Alive at ${new Date().toLocaleTimeString()} (RAM: ${Math.round(process.memoryUsage().rss / 1024 / 1024)}MB)`);
+    }, 2000);
+}
+
+// Enhanced Logging middleware
+app.use((req, res, next) => {
+  const start = Date.now();
+  const referer = req.headers.referer || 'unknown';
+  const ua = req.headers['user-agent'] || 'unknown';
+  
+  // Log request start
+  if (config.NODE_ENV === 'development') {
+    console.log(`>>> [REQUISICAO] ${req.method} ${req.url} [Referer: ${referer}]`);
+  }
+
+  // Hook into response finish
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    if (config.NODE_ENV === 'development') {
+        console.log(`<<< [RESPOSTA] ${req.method} ${req.url} - Status: ${res.statusCode} (${duration}ms)`);
+    }
+  });
+
+  next();
+});
+
+// Root handler to avoid 404 in logs
+app.get('/', (req, res) => {
+    res.json({ message: 'IMG Backend Root', status: 'ready' });
+});
+
 // Security middleware
 setupSecurity(app);
 
@@ -20,9 +55,12 @@ app.use(express.json({ limit: '16kb' }));
 
 // Routes
 const systemRoutes = require('./routes/logs');
+const aiGameRoutes = createAiGameRoutes(aiGameEngine);
 app.use('/auth', createAuthRoutes({ gameEngine: aiGameEngine }));
+app.use('/api/v1/platform', createPlatformRoutes());
 app.use('/api/v1/system', systemRoutes);
-app.use('/api/v1/ai-game', createAiGameRoutes(aiGameEngine));
+app.use('/api/v1/ai-game', aiGameRoutes);
+app.use('/api/v1/games/garden-quest', aiGameRoutes);
 
 // Health check (Cloud Run requirement)
 app.get('/health', (req, res) => {
@@ -31,7 +69,11 @@ app.get('/health', (req, res) => {
 
 // 404 handler
 app.use((req, res) => {
-  res.status(404).json({ error: 'Not found' });
+  console.warn(`[404] Resource not found: ${req.method} ${req.originalUrl}`);
+  res.status(404).json({
+    error: 'Not found',
+    path: req.originalUrl
+  });
 });
 
 // Error handler
