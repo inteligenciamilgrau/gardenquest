@@ -2,7 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const config = require('../config');
 const { insertLog } = require('../database/postgres');
-const { formatSuspicionDetails, validatePlayerCommandBody } = require('../game/command-security');
+const { formatSuspicionDetails, validatePlayerCommandBody } = require('../games/garden-quest/command-security');
 
 function getRequestIp(req) {
   const forwardedFor = req.headers['x-forwarded-for'];

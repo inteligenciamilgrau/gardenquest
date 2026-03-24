@@ -12,11 +12,21 @@ Como IA, seu objetivo ao integrar um jogo é garantir que ele "se sinta" parte d
 ## 2. Checklist de Integração (Passo a Passo)
 
 1.  **Registro no Backend:** Adicionar o novo `slug` em `backend/services/game-registry.js`.
-2.  **Configuração de Frontend:** Criar o diretório `frontend/public/games/<slug>/`.
-3.  **Configuração de API:** Criar o router em `backend/routes/games/<slug>.js`.
-4.  **SDK Hook:** Incluir `platform-sdk.js` e configurar o objeto `window.PLATFORM_GAME_CONFIG`.
+2.  **Configuração de Frontend (Soberana):** Criar o diretório `frontend/public/games/<slug>/`. Este diretório deve conter TODOS os assets (`js`, `css`, `assets`) do jogo. Não suje a raiz `public/`.
+3.  **Configuração de Backend (Soberana):** Criar o diretório `backend/games/<slug>/` para o motor do jogo (`engine.js`).
+4.  **Configuração de API:** Em `backend/server.js`, importar o novo motor e montar as rotas (ex: `/api/v1/games/<slug>`).
+5.  **SDK Hook:** Incluir `platform-sdk.js` localmente e configurar `window.PLATFORM_GAME_CONFIG`.
 
-## 3. Prevenção de Memory Leaks: O "Nuclear Cleanup"
+## 3. Otimização de Performance e Banco (Supabase)
+
+> [!IMPORTANT]
+> A plataforma preza pela leveza e baixo custo de IO. O motor de simulação (geralmente 50ms) **NÃO** deve gravar no banco em tempo real por ações triviais.
+
+-   **Persistência Throttled:** Chame `persistActorStats` APENAS na **Morte do Player** ou na **Desconexão (Logout)**.
+-   **Log de Eventos:** Evite logar ações frequentes (andar, comer). Mantenha logs para eventos de ciclo de vida (entrou, saiu, morreu).
+-   **CPU Usage:** Garanta que loops de busca de caminho (A*) não rodem desnecessariamente se o alvo não mudou.
+
+## 4. Prevenção de Memory Leaks: O "Nuclear Cleanup"
 
 O maior desafio em jogos WebGL (Three.js/Babylon) é o resíduo de memória ao sair do jogo e voltar ao Hub. Se não for limpo, o navegador pode travar após 2 ou 3 sessões.
 

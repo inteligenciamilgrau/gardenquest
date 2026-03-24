@@ -5,7 +5,7 @@ const createAiGameRoutes = require('./routes/ai-game');
 const createPlatformRoutes = require('./routes/platform');
 const config = require('./config');
 const { verifyDatabaseConnection } = require('./database/postgres');
-const { AiGameEngine } = require('./game/engine');
+const { AiGameEngine } = require('./games/garden-quest/engine');
 
 const app = express();
 const aiGameEngine = new AiGameEngine();
@@ -17,24 +17,28 @@ app.set('trust proxy', 1);
 if (config.NODE_ENV === 'development' || config.APP_ENV === 'local') {
     setInterval(() => {
         console.log(`[SERVER-HEARTBEAT] ⚙️ Alive at ${new Date().toLocaleTimeString()} (RAM: ${Math.round(process.memoryUsage().rss / 1024 / 1024)}MB)`);
-    }, 2000);
+    }, 60000); // Changed from 2000ms to 60000ms (1 minute)
 }
 
 // Enhanced Logging middleware
 app.use((req, res, next) => {
   const start = Date.now();
   const referer = req.headers.referer || 'unknown';
-  const ua = req.headers['user-agent'] || 'unknown';
   
+  // Filter out noisy requests that are likely health checks or probes
+  const isQuietPath = req.url === '/' || req.url === '/health';
+  const shouldLog = config.NODE_ENV === 'development' && (!isQuietPath || process.env.VERBOSE_LOGS === 'true');
+
   // Log request start
-  if (config.NODE_ENV === 'development') {
+  if (shouldLog) {
     console.log(`>>> [REQUISICAO] ${req.method} ${req.url} [Referer: ${referer}]`);
   }
 
   // Hook into response finish
   res.on('finish', () => {
     const duration = Date.now() - start;
-    if (config.NODE_ENV === 'development') {
+    // Log response if it was a logged request OR if it failed (even on a quiet path)
+    if (shouldLog || res.statusCode >= 400) {
         console.log(`<<< [RESPOSTA] ${req.method} ${req.url} - Status: ${res.statusCode} (${duration}ms)`);
     }
   });

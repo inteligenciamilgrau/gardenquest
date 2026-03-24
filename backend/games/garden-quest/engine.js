@@ -1,4 +1,4 @@
-const config = require('../config');
+const config = require('../../config');
 const {
   getGameActorProfile,
   getRecentVisibleChatMessages,
@@ -9,8 +9,8 @@ const {
   insertLog,
   upsertPlayerProfile,
   upsertGameScore,
-} = require('../database/postgres');
-const { createOpenAiDecisionClient } = require('../services/openai-client');
+} = require('../../database/postgres');
+const { createOpenAiDecisionClient } = require('../../services/openai-client');
 const {
   createWorldState,
   getHouseTowerElevators,
@@ -1202,10 +1202,6 @@ class AiGameEngine {
       player.name = buildDefaultPlayerNickname(userId);
     }
 
-    if (player.name !== previousNickname || player.appearance.outfitColor !== previousOutfitColor) {
-      this.persistActorStats(player);
-    }
-
     player.lastSeenAt = Date.now();
     return player;
   }
@@ -1606,7 +1602,6 @@ class AiGameEngine {
         detailParts.push(`previous_outfit_color=${formatLogDetailValue(previousOutfitColor)}`);
       }
 
-      this.persistActorStats(player);
       this.logEvent('player_profile_updated', buildPlayerLogContext(player, {
         details: detailParts.join('; '),
       }));
@@ -1763,7 +1758,6 @@ class AiGameEngine {
     actor.bestScore = Math.max(Math.max(0, Math.trunc(actor.bestScore || 0)), nextScore);
     actor.scoreProgress = 0;
     actor.scoreDirection = 0;
-    this.persistActorStats(actor);
   }
 
   handleActorDeath(actor, reason, now = Date.now()) {
@@ -1878,7 +1872,6 @@ class AiGameEngine {
         details: `x=${roundNumber(actor.position.x, 2)}; z=${roundNumber(actor.position.z, 2)}`,
       }));
     }
-    this.persistActorStats(actor);
     return true;
   }
 
@@ -1909,7 +1902,7 @@ class AiGameEngine {
       const step = moveSpeed * deltaSeconds;
 
       if (player.currentAction !== 'move') {
-        this.logEvent('player_started_moving', buildPlayerLogContext(player));
+        // Log removed to reduce DB load
       }
 
       const nextPosition = resolveWalkablePosition(
@@ -2020,9 +2013,6 @@ class AiGameEngine {
       return false;
     }
 
-    this.logEvent('ai_route_replanned', {
-      details: `target=${target.id}; attempt=${this.state.ai.movementReplanCount}; waypoints=${this.state.ai.movementRoute.length}`,
-    });
     return true;
   }
 
@@ -2062,7 +2052,6 @@ class AiGameEngine {
       this.state.ai.currentAction = 'wait';
       this.state.nextDecisionAt = now + 200;
       this.clearMovement();
-      this.logEvent('ai_target_reached');
       return;
     }
 
@@ -2312,7 +2301,6 @@ class AiGameEngine {
         this.state.ai.status = 'moving';
         this.state.ai.currentAction = 'move_to';
         this.rememberAiAction('move_to', decision.targetId);
-        this.logEvent('ai_move_to_target');
         return;
       }
       case 'drink_water':
@@ -2365,12 +2353,7 @@ class AiGameEngine {
       this.clearMovement();
     }
 
-    if (actor === this.state.ai) {
-      this.rememberAiAction('drink_water');
-    }
-
     this.awardActorScore(actor, DRINK_SCORE_POINTS);
-    this.logEvent(eventName, logContext);
     return true;
   }
 
@@ -3110,7 +3093,6 @@ class AiGameEngine {
       this.rememberAiAction('pick_fruit');
     }
 
-    this.logEvent(eventName, logContext);
     return true;
   }
 
@@ -3172,7 +3154,6 @@ class AiGameEngine {
     }
 
     this.awardActorScore(actor, EAT_FRUIT_SCORE_POINTS);
-    this.logEvent(eventName, logContext);
     return true;
   }
 
