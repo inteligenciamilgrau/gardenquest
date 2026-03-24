@@ -15,7 +15,27 @@ Cada jogo deve ser um módulo independente, pronto para ser movido para seu pró
 
 ---
 
-## 2. Passo a Passo de Integração
+## 2. Integração de Repositórios Externos
+
+Para manter um jogo em um repositório Git separado e "encaixá-lo" na plataforma, a estrutura recomendada no repositório do jogo é:
+```text
+meu-jogo-repo/
+  ├── web/      (Conteúdo que vai para frontend/public/games/)
+  └── api/      (Conteúdo que vai para backend/games/)
+```
+
+### Como "Montar" o jogo na Plataforma:
+No repositório da Plataforma, você pode usar **Links Simbólicos (Symlinks)** para mapear as pastas sem precisar duplicar código:
+1. Adicione o jogo como um submódulo em uma pasta temporária: `git submodule add [URL] external/meu-jogo`
+2. Crie os links:
+   - `mklink /D frontend\public\games\meu-jogo ..\..\..\external\meu-jogo\web` (Windows)
+   - `mklink /D backend\games\meu-jogo ..\..\external\meu-jogo\api` (Windows)
+
+Dessa forma, um único Git externo alimenta as duas pastas necessárias na plataforma.
+
+---
+
+## 3. Passo a Passo de Integração (Local)
 
 1.  **Registro no Catálogo**: Adicione o jogo em `backend/services/game-registry.js`.
 2.  **Criação das Pastas**: Crie as estruturas mencionadas no item 1.
