@@ -28,12 +28,12 @@ async function initializeHub() {
         }
     }
 
-    // Heartbeat with Freeze Detector
+    // Heartbeat with Freeze Detector (10s interval to avoid UI thread pressure)
     let lastPulse = Date.now();
     heartbeatInterval = setInterval(() => {
         const now = Date.now();
         const gap = now - lastPulse;
-        if (gap > 2000) {
+        if (gap > 12000) {
             console.warn(`[HUB-FREEZE-DETECTOR] ⚠️ UI Thread blocked for ${gap}ms!`);
         }
         lastPulse = now;
@@ -43,8 +43,8 @@ async function initializeHub() {
             const mem = window.performance.memory;
             jsHeap = `${(mem.usedJSHeapSize / 1024 / 1024).toFixed(2)}MB / ${(mem.totalJSHeapSize / 1024 / 1024).toFixed(2)}MB`;
         }
-        console.log(`[HUB-HEARTBEAT] ❤️ Alive at ${new Date().toLocaleTimeString()} | 🧠 Memory: ${jsHeap}`);
-    }, 1000);
+        console.debug(`[HUB-HEARTBEAT] ❤️ Alive at ${new Date().toLocaleTimeString()} | 🧠 Memory: ${jsHeap}`);
+    }, 10000);
 
     // Memory Monitor cleared (merged into heartbeat)
 
