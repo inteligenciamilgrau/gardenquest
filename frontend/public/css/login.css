@@ -239,6 +239,10 @@ body.ops-modal-open {
     backdrop-filter: blur(7px);
 }
 
+.ops-modal-backdrop[hidden] {
+    display: none !important;
+}
+
 .ops-modal {
     width: 100%;
     max-width: 460px;
