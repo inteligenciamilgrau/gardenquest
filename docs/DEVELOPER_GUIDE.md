@@ -2,6 +2,9 @@
 
 Este documento é a fonte única de verdade para criar e integrar novos jogos na plataforma.
 
+Se voce nao e do time tecnico, use `docs/USER_GUIDE.md` (fluxo de uso) e `docs/README.md` (mapa rapido da documentacao).
+Para operacao passo a passo, veja tambem `docs/PLAYBOOK_LOCAL.md` e `docs/PLAYBOOK_NUVEM.md`.
+
 ## 1. Arquitetura Modular
 
 Cada jogo deve ser um módulo independente, pronto para ser movido para seu próprio repositório Git.
@@ -139,9 +142,9 @@ Para ambientes com API em porta nao padrao:
 
 ## 12. Contrato HTTP (OpenAPI)
 
-- Arquivo canonico do contrato: `docs/openapi.yaml`.
+- Arquivo canonico do contrato: `docs/OPENAPI.yaml`.
 - Sempre que uma rota, payload ou codigo de erro mudar em `backend/routes/*`, atualize a spec no mesmo PR.
-- Regra pratica: nao mergear alteracao de API sem diff correspondente em `docs/openapi.yaml`.
+- Regra pratica: nao mergear alteracao de API sem diff correspondente em `docs/OPENAPI.yaml`.
 
 ---
 
@@ -154,4 +157,4 @@ Para ambientes com API em porta nao padrao:
 Regras praticas:
 1. Toda mudanca funcional relevante deve atualizar o `CHANGELOG.md`.
 2. PR sem validacoes minimas (`check:env`, `lint`, `test:tasks`) nao deve ser mergeado.
-3. Mudancas de API exigem update de `docs/openapi.yaml` no mesmo PR.
+3. Mudancas de API exigem update de `docs/OPENAPI.yaml` no mesmo PR.

@@ -93,12 +93,6 @@ backend/
 │   └── supabase-schema.sql  → schema canonico
 └── scripts/check-env.js     → validacao de ambiente
 
-archive/
-├── README.md                → politica de artefatos legados
-├── host.py                  → servidor Python legado (arquivado)
-├── GardenQuest Projeto Detalhado.html
-├── legacy/                  → placeholder para materiais legados adicionais
-└── olds/                    → snapshots e pacotes historicos
 ```
 
 ## Requisitos
@@ -234,7 +228,7 @@ Depois, o valor fica salvo no browser (`img_platform_api_url`).
 - `deploy.ps1` / `deploy.sh`: scripts de deploy
 - `backend/Dockerfile` e `frontend/Dockerfile`: imagens separadas
 - Docs sobre Secret Manager em `docs/`
-- `docs/local-development.md`: guia completo para dev local
+- `docs/LOCAL_DEVELOPMENT.md`: guia completo para dev local
 
 ### Deploy via shell (Cloud Run)
 
@@ -283,23 +277,21 @@ Pipeline minimo em GitHub Actions:
 
 ## Documentacao
 
-- `docs/EVOLUTION_ROADMAP.md` — roadmap completo de V0 a V12
-- `docs/DEVELOPER_GUIDE.md` — guia de integracao de novos jogos
-- `docs/USER_GUIDE.md` — guia passo a passo para rodar e usar a solucao
-- `docs/openapi.yaml` — contrato OpenAPI 3.0.3 das rotas HTTP do backend
-- `docs/implementation/` — plano detalhado de cada fase
-- `docs/implementation/RELATORIO_REVALIDACAO_2026-03-24.md` — auditoria tecnica completa da implementacao
-- `docs/strategy/` — documentacao estrategica (Fase 1)
-- `docs/evolution/` — documentacao de evolucao (Fase 2)
-- `docs/security-review.md` — revisao de seguranca
-- `archive/README.md` — criterio e escopo dos artefatos historicos fora do runtime
+- `docs/README.md` — indice de leitura e mapa da documentacao
+- `docs/USER_GUIDE.md` — guia passo a passo para uso da plataforma
+- `docs/LOCAL_DEVELOPMENT.md` — setup de ambiente local para dev
+- `docs/PLAYBOOK_LOCAL.md` — runbook detalhado para subir local
+- `docs/PLAYBOOK_NUVEM.md` — runbook detalhado para subir na nuvem
+- `docs/DEVELOPER_GUIDE.md` — guia tecnico de integracao e contribuicao
+- `docs/OPENAPI.yaml` — contrato OpenAPI 3.0.3 das rotas HTTP do backend
+- `docs/SECURITY_REVIEW.md` — revisao de seguranca e hardening
 
 ## API de Agentes
 
 Contrato completo da API:
 
 ```text
-docs/openapi.yaml
+docs/OPENAPI.yaml
 ```
 
 ```

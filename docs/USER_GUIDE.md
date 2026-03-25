@@ -6,6 +6,21 @@ Este guia explica, de forma pratica e passo a passo, como:
 2. acessar a plataforma,
 3. usar as funcionalidades principais (hub, jogo e painel admin).
 
+## Leitura rapida (para quem nao e tecnico)
+
+Se voce so quer ver o projeto rodando:
+
+1. Rode `docker compose -f docker-compose.local.yml up -d`
+2. Rode `npm --prefix backend run start:api` e `npm --prefix backend run start:worker`
+3. Rode `cd frontend/public && python3 -m http.server 5500`
+4. Abra `http://localhost:5500`
+
+Se abrir login -> hub -> jogo sem erro, o ambiente esta funcional.
+
+Playbooks detalhados:
+- `docs/PLAYBOOK_LOCAL.md`
+- `docs/PLAYBOOK_NUVEM.md`
+
 ## 1) Pre-requisitos
 
 - Node.js 20+ e npm 10+

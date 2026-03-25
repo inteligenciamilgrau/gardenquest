@@ -15,13 +15,13 @@ e versionamento semantico.
 - Documentacao de contribuicao (`CONTRIBUTING.md`) e ownership (`CODEOWNERS`).
 
 ### Changed
-- Artefatos historicos movidos para `archive/` para reduzir ruido na raiz.
+- Artefatos historicos removidos da raiz para reduzir ruido no repositorio.
 - Rotas de stream retornam `429` com payload explicativo em saturacao de capacidade.
 
 ## [2026-03-25]
 
 ### Added
-- Plano executavel por PR e tasks individuais em `docs/melhorias/`.
+- Plano executavel por PR e tasks individuais consolidados na documentacao do projeto.
 - OpenAPI inicial, testes de rotas e validacoes de implementacao.
 
 ### Changed

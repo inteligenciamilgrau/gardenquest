@@ -671,7 +671,7 @@ test('requestContext generates UUID for invalid incoming x-correlation-id', () =
 });
 
 test('openapi spec exists and documents critical routes', () => {
-  const specPath = path.resolve(__dirname, '../../docs/openapi.yaml');
+  const specPath = path.resolve(__dirname, '../../docs/OPENAPI.yaml');
   const specContent = fs.readFileSync(specPath, 'utf8');
 
   assert.match(specContent, /^openapi:\s*3\.0\.3/m);

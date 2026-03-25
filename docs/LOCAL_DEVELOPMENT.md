@@ -2,6 +2,20 @@
 
 Este documento descreve como subir o projeto localmente sem enfraquecer o modelo de seguranca do deploy.
 
+## Resumo em 5 minutos
+
+Para um setup rapido de desenvolvimento:
+
+1. `cp .env.local.example .env.local`
+2. ajustar `SUPABASE_DB_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `JWT_SECRET`
+3. `docker compose -f docker-compose.local.yml up -d`
+4. `npm --prefix backend run check:env`
+5. `npm --prefix backend run start:api` e `npm --prefix backend run start:worker`
+6. `cd frontend/public && python3 -m http.server 5500`
+7. abrir `http://localhost:5500`
+
+Se quiser detalhes de cada etapa e de seguranca, continue nas secoes abaixo.
+
 ## Objetivo
 
 O projeto foi estruturado para manter a seguranca no backend, mesmo com o codigo do frontend publico. Isso significa:

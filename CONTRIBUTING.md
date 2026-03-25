@@ -51,7 +51,7 @@ npm --prefix backend run test:e2e
 - Liste arquivos alterados e impacto esperado.
 - Inclua plano de rollback quando houver mudanca sensivel.
 - Atualize documentacao relacionada no mesmo PR.
-- Se houver mudanca de contrato HTTP, atualize `docs/openapi.yaml`.
+- Se houver mudanca de contrato HTTP, atualize `docs/OPENAPI.yaml`.
 
 ## Seguranca e segredos
 - Nunca commitar segredos, tokens ou chaves.
