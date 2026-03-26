@@ -144,7 +144,9 @@ async function verifyDatabaseConnection() {
     await runDatabaseMigrations(database);
     return;
   } catch (migrationError) {
-    console.warn(`Migration runner unavailable, falling back to legacy bootstrap: ${migrationError.message}`);
+    console.warn(
+      `Migration runner unavailable, falling back to legacy bootstrap: ${migrationError.message}`
+    );
   }
 
   await database.query(`
@@ -270,9 +272,17 @@ async function verifyDatabaseConnection() {
 
   await applyLockedDownApiPolicy(database, 'public.event_logs', 'deny_all_event_logs_api_access');
   await applyLockedDownApiPolicy(database, 'public.users', 'deny_all_users_api_access');
-  await applyLockedDownApiPolicy(database, 'public.player_profiles', 'deny_all_player_profiles_api_access');
+  await applyLockedDownApiPolicy(
+    database,
+    'public.player_profiles',
+    'deny_all_player_profiles_api_access'
+  );
   await applyLockedDownApiPolicy(database, 'public.actor_stats', 'deny_all_actor_stats_api_access');
-  await applyLockedDownApiPolicy(database, 'public.chat_messages', 'deny_all_chat_messages_api_access');
+  await applyLockedDownApiPolicy(
+    database,
+    'public.chat_messages',
+    'deny_all_chat_messages_api_access'
+  );
 }
 
 async function upsertUser({
@@ -558,10 +568,7 @@ async function incrementGameActorSoccerGoals({
         soccer_goals = public.actor_stats.soccer_goals + 1,
         updated_at = timezone('utc', now())
     `,
-    [
-      actorId,
-      normalizeActorType(actorType),
-    ]
+    [actorId, normalizeActorType(actorType)]
   );
 }
 

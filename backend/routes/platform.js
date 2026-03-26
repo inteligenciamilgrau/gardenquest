@@ -20,9 +20,7 @@ function normalizePlatformEventName(value) {
   }
 
   const normalizedValue = value.trim().toLowerCase();
-  return /^[a-z0-9._-]{2,64}$/.test(normalizedValue)
-    ? normalizedValue
-    : null;
+  return /^[a-z0-9._-]{2,64}$/.test(normalizedValue) ? normalizedValue : null;
 }
 
 function toPlatformUser(user) {
@@ -99,7 +97,9 @@ function createPlatformRoutes() {
     const gameSlug = normalizeSlug(req.body?.gameSlug);
     const details = normalizeText(req.body?.details, 512);
 
-    console.log(`[EVENT] Track request: ${event} (Game: ${gameSlug || 'none'}) - User: ${req.authUser.id}`);
+    console.log(
+      `[EVENT] Track request: ${event} (Game: ${gameSlug || 'none'}) - User: ${req.authUser.id}`
+    );
 
     if (!event) {
       console.warn('[EVENT] Invalid platform event received.');

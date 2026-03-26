@@ -15,11 +15,23 @@ async function ensureAuthSessionTable() {
       last_seen_at timestamptz NOT NULL DEFAULT timezone('utc', now()), revoked_at timestamptz, revoke_reason text
     )
   `);
-  await db.query(`CREATE INDEX IF NOT EXISTS idx_auth_sessions_user_id ON public.auth_sessions (user_id, revoked_at, expires_at DESC)`);
-  await db.query(`CREATE INDEX IF NOT EXISTS idx_auth_sessions_last_seen_at ON public.auth_sessions (last_seen_at DESC)`);
+  await db.query(
+    `CREATE INDEX IF NOT EXISTS idx_auth_sessions_user_id ON public.auth_sessions (user_id, revoked_at, expires_at DESC)`
+  );
+  await db.query(
+    `CREATE INDEX IF NOT EXISTS idx_auth_sessions_last_seen_at ON public.auth_sessions (last_seen_at DESC)`
+  );
 }
 
-async function createAuthSession({ id, userId, userEmail = null, userName = null, ip = null, userAgent = null, expiresAt }) {
+async function createAuthSession({
+  id,
+  userId,
+  userEmail = null,
+  userName = null,
+  ip = null,
+  userAgent = null,
+  expiresAt,
+}) {
   const normalizedExpiresAt = normalizeTimestamp(expiresAt);
   const result = await getPool().query(
     `INSERT INTO public.auth_sessions (id, user_id, user_email, user_name, ip, user_agent, expires_at, issued_at, last_seen_at)
@@ -32,7 +44,8 @@ async function createAuthSession({ id, userId, userEmail = null, userName = null
 
 async function getAuthSessionById(id) {
   const result = await getPool().query(
-    `SELECT id, user_id AS "userId", user_email AS "userEmail", user_name AS "userName", ip, user_agent AS "userAgent", created_at AS "createdAt", issued_at AS "issuedAt", expires_at AS "expiresAt", last_seen_at AS "lastSeenAt", revoked_at AS "revokedAt", revoke_reason AS "revokeReason" FROM public.auth_sessions WHERE id = $1 LIMIT 1`, [id]
+    `SELECT id, user_id AS "userId", user_email AS "userEmail", user_name AS "userName", ip, user_agent AS "userAgent", created_at AS "createdAt", issued_at AS "issuedAt", expires_at AS "expiresAt", last_seen_at AS "lastSeenAt", revoked_at AS "revokedAt", revoke_reason AS "revokeReason" FROM public.auth_sessions WHERE id = $1 LIMIT 1`,
+    [id]
   );
   return result.rows[0] || null;
 }
@@ -40,14 +53,16 @@ async function getAuthSessionById(id) {
 async function getActiveAuthSession(id) {
   const result = await getPool().query(
     `SELECT id, user_id AS "userId", user_email AS "userEmail", user_name AS "userName", ip, user_agent AS "userAgent", created_at AS "createdAt", issued_at AS "issuedAt", expires_at AS "expiresAt", last_seen_at AS "lastSeenAt", revoked_at AS "revokedAt", revoke_reason AS "revokeReason"
-     FROM public.auth_sessions WHERE id = $1 AND revoked_at IS NULL AND expires_at > timezone('utc', now()) LIMIT 1`, [id]
+     FROM public.auth_sessions WHERE id = $1 AND revoked_at IS NULL AND expires_at > timezone('utc', now()) LIMIT 1`,
+    [id]
   );
   return result.rows[0] || null;
 }
 
 async function touchAuthSession(id) {
   const result = await getPool().query(
-    `UPDATE public.auth_sessions SET last_seen_at = timezone('utc', now()) WHERE id = $1 AND revoked_at IS NULL AND expires_at > timezone('utc', now()) RETURNING id, user_id AS "userId", last_seen_at AS "lastSeenAt"`, [id]
+    `UPDATE public.auth_sessions SET last_seen_at = timezone('utc', now()) WHERE id = $1 AND revoked_at IS NULL AND expires_at > timezone('utc', now()) RETURNING id, user_id AS "userId", last_seen_at AS "lastSeenAt"`,
+    [id]
   );
   return result.rows[0] || null;
 }
@@ -60,7 +75,10 @@ async function revokeAuthSession(id, revokeReason = 'logout') {
   return result.rows[0] || null;
 }
 
-async function revokeAllAuthSessionsForUser(userId, { exceptSessionId = null, revokeReason = 'logout_all' } = {}) {
+async function revokeAllAuthSessionsForUser(
+  userId,
+  { exceptSessionId = null, revokeReason = 'logout_all' } = {}
+) {
   const result = await getPool().query(
     `UPDATE public.auth_sessions SET revoked_at = timezone('utc', now()), revoke_reason = COALESCE($3, revoke_reason) WHERE user_id = $1 AND revoked_at IS NULL AND ($2::text IS NULL OR id <> $2) RETURNING id`,
     [userId, exceptSessionId, revokeReason]

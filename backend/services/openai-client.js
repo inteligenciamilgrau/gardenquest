@@ -54,7 +54,9 @@ const DEFAULT_NPC_SYSTEM_PROMPT = [
 const npcPromptCache = new Map();
 
 function normalizePromptVersion(value) {
-  const normalized = String(value || '').trim().toLowerCase();
+  const normalized = String(value || '')
+    .trim()
+    .toLowerCase();
   if (/^[a-z0-9._-]{1,32}$/.test(normalized)) {
     return normalized;
   }
@@ -83,7 +85,12 @@ function normalizePromptText(rawText) {
 
   const normalizedLines = lines
     .filter((line) => !line.startsWith('#'))
-    .map((line) => line.replace(/^[-*]\s+/, '').replace(/^\d+\.\s+/, '').trim())
+    .map((line) =>
+      line
+        .replace(/^[-*]\s+/, '')
+        .replace(/^\d+\.\s+/, '')
+        .trim()
+    )
     .filter((line) => Boolean(line));
 
   return normalizedLines.join(' ').trim();
@@ -109,7 +116,9 @@ function resolveNpcSystemPrompt({ forceReload = false, logger = console } = {}) 
     resolvedPrompt = normalizePromptText(fs.readFileSync(filePath, 'utf8'));
   } catch (error) {
     resolvedPrompt = '';
-    logger.warn?.(`NPC system prompt file not available (${filePath}): ${error.message}. Using fallback prompt.`);
+    logger.warn?.(
+      `NPC system prompt file not available (${filePath}): ${error.message}. Using fallback prompt.`
+    );
   }
 
   const output = {
@@ -272,13 +281,15 @@ function sleep(ms) {
 }
 
 function isRetryableOpenAiStatus(statusCode) {
-  return statusCode === 408
-    || statusCode === 409
-    || statusCode === 429
-    || statusCode === 500
-    || statusCode === 502
-    || statusCode === 503
-    || statusCode === 504;
+  return (
+    statusCode === 408 ||
+    statusCode === 409 ||
+    statusCode === 429 ||
+    statusCode === 500 ||
+    statusCode === 502 ||
+    statusCode === 503 ||
+    statusCode === 504
+  );
 }
 
 function computeRetryDelayMs(attemptNumber, retryAfterSeconds = null) {
@@ -288,22 +299,28 @@ function computeRetryDelayMs(attemptNumber, retryAfterSeconds = null) {
 
   const baseDelay = 250;
   const maxDelay = 2000;
-  const exponentialDelay = Math.min(maxDelay, baseDelay * (2 ** (attemptNumber - 1)));
+  const exponentialDelay = Math.min(maxDelay, baseDelay * 2 ** (attemptNumber - 1));
   const jitter = Math.floor(Math.random() * 120);
   return exponentialDelay + jitter;
 }
 
 function isRetryableTransportError(error) {
   const code = String(error?.code || '').toUpperCase();
-  if (code === 'UND_ERR_CONNECT_TIMEOUT' || code === 'UND_ERR_HEADERS_TIMEOUT' || code === 'UND_ERR_BODY_TIMEOUT') {
+  if (
+    code === 'UND_ERR_CONNECT_TIMEOUT' ||
+    code === 'UND_ERR_HEADERS_TIMEOUT' ||
+    code === 'UND_ERR_BODY_TIMEOUT'
+  ) {
     return true;
   }
 
-  return code === 'ECONNRESET'
-    || code === 'ECONNREFUSED'
-    || code === 'EAI_AGAIN'
-    || code === 'ETIMEDOUT'
-    || code === 'ENOTFOUND';
+  return (
+    code === 'ECONNRESET' ||
+    code === 'ECONNREFUSED' ||
+    code === 'EAI_AGAIN' ||
+    code === 'ETIMEDOUT' ||
+    code === 'ENOTFOUND'
+  );
 }
 
 async function postJson({ url, body, headers, timeoutMs }) {

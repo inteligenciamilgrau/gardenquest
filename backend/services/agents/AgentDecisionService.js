@@ -21,11 +21,18 @@ function estimateTokensFromJson(value) {
  * Coordinates decision execution for both official NPC and player-owned agents.
  */
 class AgentDecisionService {
-  constructor({ agentRepository = null, secretVault = null, governanceService = null, moderationService = null, logger = console } = {}) {
+  constructor({
+    agentRepository = null,
+    secretVault = null,
+    governanceService = null,
+    moderationService = null,
+    logger = console,
+  } = {}) {
     this.agentRepository = agentRepository;
     this.secretVault = secretVault;
     this.logger = logger;
-    this.governanceService = governanceService || new AgentGovernanceService({ agentRepository, logger });
+    this.governanceService =
+      governanceService || new AgentGovernanceService({ agentRepository, logger });
     this.moderationService = moderationService || new AgentModerationService({ logger });
   }
 
@@ -60,7 +67,11 @@ class AgentDecisionService {
         },
       });
       const result = await provider.decide({ agent: officialNpc, observation, policy });
-      const moderated = this.moderationService.moderateDecision({ agent: officialNpc, decision: result, policy });
+      const moderated = this.moderationService.moderateDecision({
+        agent: officialNpc,
+        decision: result,
+        policy,
+      });
       await this.recordRun({
         agentId: officialNpc.id,
         status: 'success',
@@ -90,9 +101,10 @@ class AgentDecisionService {
         estimatedOutputTokens: 0,
       });
 
-      const fallback = typeof fallbackDecisionFactory === 'function'
-        ? fallbackDecisionFactory(error)
-        : { action: 'wait', targetId: null, speech: null };
+      const fallback =
+        typeof fallbackDecisionFactory === 'function'
+          ? fallbackDecisionFactory(error)
+          : { action: 'wait', targetId: null, speech: null };
 
       return {
         ...fallback,
@@ -130,9 +142,10 @@ class AgentDecisionService {
       ...(agent.policyJson || {}),
     };
 
-    const endpointConfig = agent.mode === 'remote_endpoint'
-      ? await this.agentRepository.getAgentEndpointByAgentId(agent.id)
-      : null;
+    const endpointConfig =
+      agent.mode === 'remote_endpoint'
+        ? await this.agentRepository.getAgentEndpointByAgentId(agent.id)
+        : null;
 
     let governanceContext = null;
     try {
@@ -150,9 +163,10 @@ class AgentDecisionService {
         countTowardsBudget: false,
       });
 
-      const fallback = typeof fallbackDecisionFactory === 'function'
-        ? fallbackDecisionFactory(error)
-        : { action: 'wait', targetId: null, speech: null };
+      const fallback =
+        typeof fallbackDecisionFactory === 'function'
+          ? fallbackDecisionFactory(error)
+          : { action: 'wait', targetId: null, speech: null };
 
       return {
         ...fallback,
@@ -182,20 +196,31 @@ class AgentDecisionService {
 
     try {
       const result = await provider.decide({ agent, observation, policy });
-      const moderated = this.moderationService.moderateDecision({ agent, decision: result, policy });
+      const moderated = this.moderationService.moderateDecision({
+        agent,
+        decision: result,
+        policy,
+      });
 
       this.governanceService.onSuccess({ agent, providerKey });
       if (agent.mode === 'remote_endpoint' && this.agentRepository?.resetAgentEndpointHealth) {
         await this.agentRepository.resetAgentEndpointHealth(agent.id).catch(() => {});
       }
 
-      if (agent.mode === 'remote_endpoint' && moderated.moderation.suspicious && this.agentRepository?.recordAgentEndpointSuspicion) {
-        await this.agentRepository.recordAgentEndpointSuspicion({
-          agentId: agent.id,
-          reason: moderated.moderation.flags.map((item) => item.code).join(',') || 'moderation_flag',
-          quarantineThreshold: config.AGENT_ENDPOINT_QUARANTINE_SUSPICIOUS_THRESHOLD,
-          quarantineMs: config.AGENT_ENDPOINT_QUARANTINE_MS,
-        }).catch(() => {});
+      if (
+        agent.mode === 'remote_endpoint' &&
+        moderated.moderation.suspicious &&
+        this.agentRepository?.recordAgentEndpointSuspicion
+      ) {
+        await this.agentRepository
+          .recordAgentEndpointSuspicion({
+            agentId: agent.id,
+            reason:
+              moderated.moderation.flags.map((item) => item.code).join(',') || 'moderation_flag',
+            quarantineThreshold: config.AGENT_ENDPOINT_QUARANTINE_SUSPICIOUS_THRESHOLD,
+            quarantineMs: config.AGENT_ENDPOINT_QUARANTINE_MS,
+          })
+          .catch(() => {});
       }
 
       await this.recordRun({
@@ -215,16 +240,23 @@ class AgentDecisionService {
         },
       };
     } catch (error) {
-      this.governanceService.onFailure({ agent, providerKey, error, policy: governanceContext?.policy });
+      this.governanceService.onFailure({
+        agent,
+        providerKey,
+        error,
+        policy: governanceContext?.policy,
+      });
       this.logger.error('Player-owned agent provider failed:', error.message);
 
       if (agent.mode === 'remote_endpoint' && this.agentRepository?.recordAgentEndpointFailure) {
-        await this.agentRepository.recordAgentEndpointFailure({
-          agentId: agent.id,
-          errorCode: error.code || error.statusCode || 'remote_endpoint_error',
-          quarantineThreshold: config.AGENT_ENDPOINT_QUARANTINE_FAILURE_THRESHOLD,
-          quarantineMs: config.AGENT_ENDPOINT_QUARANTINE_MS,
-        }).catch(() => {});
+        await this.agentRepository
+          .recordAgentEndpointFailure({
+            agentId: agent.id,
+            errorCode: error.code || error.statusCode || 'remote_endpoint_error',
+            quarantineThreshold: config.AGENT_ENDPOINT_QUARANTINE_FAILURE_THRESHOLD,
+            quarantineMs: config.AGENT_ENDPOINT_QUARANTINE_MS,
+          })
+          .catch(() => {});
       }
 
       await this.recordRun({
@@ -238,9 +270,10 @@ class AgentDecisionService {
         estimatedOutputTokens: 0,
       });
 
-      const fallback = typeof fallbackDecisionFactory === 'function'
-        ? fallbackDecisionFactory(error)
-        : { action: 'wait', targetId: null, speech: null };
+      const fallback =
+        typeof fallbackDecisionFactory === 'function'
+          ? fallbackDecisionFactory(error)
+          : { action: 'wait', targetId: null, speech: null };
 
       return {
         ...fallback,
@@ -269,7 +302,17 @@ class AgentDecisionService {
    * }} params
    * @returns {Promise<void>}
    */
-  async recordRun({ agentId, status, errorCode = null, latencyMs = null, providerMode = null, providerName = null, estimatedInputTokens = null, estimatedOutputTokens = null, countTowardsBudget = true }) {
+  async recordRun({
+    agentId,
+    status,
+    errorCode = null,
+    latencyMs = null,
+    providerMode = null,
+    providerName = null,
+    estimatedInputTokens = null,
+    estimatedOutputTokens = null,
+    countTowardsBudget = true,
+  }) {
     if (!this.agentRepository?.recordAgentRun) {
       return;
     }

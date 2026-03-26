@@ -48,7 +48,10 @@ function decodeAuthToken(token) {
   };
 }
 
-async function getAuthenticatedUser(req, { requireActiveSession = true, touchSession = true } = {}) {
+async function getAuthenticatedUser(
+  req,
+  { requireActiveSession = true, touchSession = true } = {}
+) {
   const token = readAuthToken(req);
   if (!token) {
     return null;
@@ -72,10 +75,10 @@ async function getAuthenticatedUser(req, { requireActiveSession = true, touchSes
     if (touchSession) {
       const sessionTouchIntervalMs = Math.max(
         10_000,
-        Number(config.SESSION_TOUCH_INTERVAL_MS) || (5 * 60 * 1000)
+        Number(config.SESSION_TOUCH_INTERVAL_MS) || 5 * 60 * 1000
       );
       const lastSeenAtMs = session?.lastSeenAt ? new Date(session.lastSeenAt).getTime() : 0;
-      if (!lastSeenAtMs || (Date.now() - lastSeenAtMs) >= sessionTouchIntervalMs) {
+      if (!lastSeenAtMs || Date.now() - lastSeenAtMs >= sessionTouchIntervalMs) {
         authSessionRepository.touchAuthSession(decoded.sessionId).catch((error) => {
           console.error('Failed to touch auth session:', error.message);
         });
@@ -95,9 +98,9 @@ function getAdminEmails() {
   return Array.isArray(config.ADMIN_GOOGLE_EMAILS)
     ? config.ADMIN_GOOGLE_EMAILS
     : String(config.ADMIN_GOOGLE_EMAILS || '')
-      .split(',')
-      .map((entry) => entry.trim().toLowerCase())
-      .filter(Boolean);
+        .split(',')
+        .map((entry) => entry.trim().toLowerCase())
+        .filter(Boolean);
 }
 
 async function requireAdmin(req, res, next) {
@@ -119,4 +122,10 @@ async function requireAdmin(req, res, next) {
   return next();
 }
 
-module.exports = { requireAuth, requireAdmin, getAuthenticatedUser, decodeAuthToken, toAuthRequestUser };
+module.exports = {
+  requireAuth,
+  requireAdmin,
+  getAuthenticatedUser,
+  decodeAuthToken,
+  toAuthRequestUser,
+};

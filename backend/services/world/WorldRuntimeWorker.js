@@ -20,7 +20,7 @@ function classifyWorkerCommandError(error, command) {
 
   const attempt = Math.max(1, Number(command?.attempts) || 1);
   const retryBaseMs = Math.max(250, Number(config.WORLD_COMMAND_RETRY_BASE_MS) || 1200);
-  const delayMs = Math.min(30000, Math.max(500, retryBaseMs * (2 ** Math.max(0, attempt - 1))));
+  const delayMs = Math.min(30000, Math.max(500, retryBaseMs * 2 ** Math.max(0, attempt - 1)));
   return { retryable: true, errorCode: code, delayMs };
 }
 
@@ -71,7 +71,8 @@ class WorldRuntimeWorker {
     this.aiGameEngine.start();
 
     if (this.realmLeaseService) {
-      await this.realmLeaseService.heartbeat()
+      await this.realmLeaseService
+        .heartbeat()
         .then((snapshot) => {
           this.aiGameEngine.setRealmLeaseSnapshot?.(snapshot, { evacuateOnLoss: true });
         })
@@ -79,15 +80,19 @@ class WorldRuntimeWorker {
           this.logger.error('Initial worker realm lease heartbeat failed:', error.message);
         });
       const leaseTtlMs = Math.max(3000, Number(this.realmLeaseService.leaseTtlMs) || 20000);
-      this.realmLeaseHandle = setInterval(() => {
-        this.realmLeaseService.heartbeat()
-          .then((snapshot) => {
-            this.aiGameEngine.setRealmLeaseSnapshot?.(snapshot, { evacuateOnLoss: true });
-          })
-          .catch((error) => {
-            this.logger.error('Worker realm lease heartbeat failed:', error.message);
-          });
-      }, Math.max(1000, Math.floor(leaseTtlMs / 2)));
+      this.realmLeaseHandle = setInterval(
+        () => {
+          this.realmLeaseService
+            .heartbeat()
+            .then((snapshot) => {
+              this.aiGameEngine.setRealmLeaseSnapshot?.(snapshot, { evacuateOnLoss: true });
+            })
+            .catch((error) => {
+              this.logger.error('Worker realm lease heartbeat failed:', error.message);
+            });
+        },
+        Math.max(1000, Math.floor(leaseTtlMs / 2))
+      );
       this.realmLeaseHandle.unref?.();
     }
 
@@ -174,7 +179,9 @@ class WorldRuntimeWorker {
    */
   isLeader() {
     if (this.realmLeaseService) {
-      return !config.AGENT_WORLD_REQUIRE_LEASE || Boolean(this.realmLeaseService.getSnapshot()?.isLeader);
+      return (
+        !config.AGENT_WORLD_REQUIRE_LEASE || Boolean(this.realmLeaseService.getSnapshot()?.isLeader)
+      );
     }
 
     const runtime = this.aiGameEngine.getRuntimeStatus?.() || {};
@@ -227,7 +234,11 @@ class WorldRuntimeWorker {
           const plan = classifyWorkerCommandError(error, command);
           this.logger.error(`World command ${command.id} failed:`, error.message);
 
-          if (!plan.retryable || (Number(command?.attempts) || 0) >= (Number(command?.maxAttempts) || config.WORLD_COMMAND_MAX_ATTEMPTS)) {
+          if (
+            !plan.retryable ||
+            (Number(command?.attempts) || 0) >=
+              (Number(command?.maxAttempts) || config.WORLD_COMMAND_MAX_ATTEMPTS)
+          ) {
             await this.worldRuntimeRepository.completeWorldCommand({
               id: command.id,
               claimedBy,
@@ -270,7 +281,10 @@ class WorldRuntimeWorker {
       case 'player_command':
         return this.aiGameEngine.applyPlayerCommand(payload.user || null, payload.command || null);
       case 'disconnect_player':
-        this.aiGameEngine.disconnectPlayer(payload.userId || command.actorId, payload.reason || 'disconnect');
+        this.aiGameEngine.disconnectPlayer(
+          payload.userId || command.actorId,
+          payload.reason || 'disconnect'
+        );
         return { ok: true, commandType: command.commandType };
       default:
         return { ok: true, ignored: true, commandType: command.commandType };
@@ -289,7 +303,9 @@ class WorldRuntimeWorker {
     this.snapshotLoopInFlight = true;
 
     try {
-      const previousSnapshotRow = await this.worldRuntimeRepository.getLatestWorldRuntimeSnapshot(this.realmId);
+      const previousSnapshotRow = await this.worldRuntimeRepository.getLatestWorldRuntimeSnapshot(
+        this.realmId
+      );
       const exported = await this.aiGameEngine.exportRuntimeSnapshot();
       const runtimeEvents = buildRuntimeEvents(
         previousSnapshotRow?.snapshotJson || null,

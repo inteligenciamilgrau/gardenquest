@@ -27,11 +27,12 @@ function normalizeLegacyDecision(decision, { speechMaxChars = 140 } = {}) {
     return null;
   }
 
-  const targetId = typeof decision.targetId === 'string'
-    ? decision.targetId.trim()
-    : typeof decision.target_id === 'string'
-      ? decision.target_id.trim()
-      : null;
+  const targetId =
+    typeof decision.targetId === 'string'
+      ? decision.targetId.trim()
+      : typeof decision.target_id === 'string'
+        ? decision.target_id.trim()
+        : null;
 
   const speech = sanitizeSpeech(decision.speech, speechMaxChars);
 

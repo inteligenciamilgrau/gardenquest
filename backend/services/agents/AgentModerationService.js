@@ -21,7 +21,10 @@ class AgentModerationService {
   }
 
   moderateDecision({ agent = null, decision = {}, policy = {} } = {}) {
-    const speechMaxChars = Math.max(1, Math.trunc(policy?.speechMaxChars || config.AGENT_SPEECH_MAX_CHARS || 96));
+    const speechMaxChars = Math.max(
+      1,
+      Math.trunc(policy?.speechMaxChars || config.AGENT_SPEECH_MAX_CHARS || 96)
+    );
     const speech = normalizeSpeech(decision?.speech, speechMaxChars);
     const flags = [];
     let moderatedSpeech = speech;
@@ -36,19 +39,26 @@ class AgentModerationService {
     if (moderatedSpeech && !config.AGENT_SPEECH_ALLOW_URLS) {
       const hasUrl = /(https?:\/\/|www\.|discord\.gg|t\.me\/|@\w+\.\w+)/i.test(moderatedSpeech);
       if (hasUrl) {
-        flags.push(buildFlag('external_link', 'high', 'speech contains URL or external contact pattern'));
+        flags.push(
+          buildFlag('external_link', 'high', 'speech contains URL or external contact pattern')
+        );
         moderatedSpeech = null;
       }
     }
 
     if (moderatedSpeech) {
-      const blocklist = Array.isArray(config.AGENT_SPEECH_BLOCKLIST) ? config.AGENT_SPEECH_BLOCKLIST : [];
+      const blocklist = Array.isArray(config.AGENT_SPEECH_BLOCKLIST)
+        ? config.AGENT_SPEECH_BLOCKLIST
+        : [];
       for (const term of blocklist) {
         const normalizedTerm = String(term || '').trim();
         if (!normalizedTerm) continue;
         if (moderatedSpeech.toLowerCase().includes(normalizedTerm.toLowerCase())) {
           flags.push(buildFlag('blocked_term', 'medium', normalizedTerm));
-          moderatedSpeech = moderatedSpeech.replace(new RegExp(normalizedTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig'), '[redacted]');
+          moderatedSpeech = moderatedSpeech.replace(
+            new RegExp(normalizedTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig'),
+            '[redacted]'
+          );
         }
       }
     }

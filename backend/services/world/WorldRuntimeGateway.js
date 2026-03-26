@@ -1,6 +1,9 @@
 const config = require('../../config');
 
-function buildEmptySnapshot(user = null, { snapshotMode = 'database', realmId = config.REALM_ID } = {}) {
+function buildEmptySnapshot(
+  user = null,
+  { snapshotMode = 'database', realmId = config.REALM_ID } = {}
+) {
   return {
     serverTime: new Date().toISOString(),
     tick: 0,
@@ -10,26 +13,28 @@ function buildEmptySnapshot(user = null, { snapshotMode = 'database', realmId = 
       chatMaxChars: config.PLAYER_CHAT_MAX_CHARS,
       nicknameMaxChars: 24,
     },
-    self: user ? {
-      id: user.id,
-      actorType: 'player',
-      name: user.name || 'Jogador',
-      status: 'loading',
-      currentAction: 'wait',
-      position: { x: 0, y: 0, z: 0 },
-      rotationY: 0,
-      appearance: { outfitColor: '#2563eb' },
-      inventory: { apples: 0, food: 100, water: 100, score: 0, bestScore: 0 },
-      availableActions: {},
-      speech: null,
-      speechVisible: false,
-      vitals: { food: 100, water: 100 },
-      score: 0,
-      bestScore: 0,
-      deaths: 0,
-      respawns: 0,
-      respawnCountdownMs: 0,
-    } : null,
+    self: user
+      ? {
+          id: user.id,
+          actorType: 'player',
+          name: user.name || 'Jogador',
+          status: 'loading',
+          currentAction: 'wait',
+          position: { x: 0, y: 0, z: 0 },
+          rotationY: 0,
+          appearance: { outfitColor: '#2563eb' },
+          inventory: { apples: 0, food: 100, water: 100, score: 0, bestScore: 0 },
+          availableActions: {},
+          speech: null,
+          speechVisible: false,
+          vitals: { food: 100, water: 100 },
+          score: 0,
+          bestScore: 0,
+          deaths: 0,
+          respawns: 0,
+          respawnCountdownMs: 0,
+        }
+      : null,
     players: [],
     agents: [],
     ai: null,
@@ -47,10 +52,15 @@ function buildEmptySnapshot(user = null, { snapshotMode = 'database', realmId = 
   };
 }
 
-function buildRuntimeMeta(snapshotRow, { snapshotMode = 'database', realmId = config.REALM_ID, stale = true } = {}) {
+function buildRuntimeMeta(
+  snapshotRow,
+  { snapshotMode = 'database', realmId = config.REALM_ID, stale = true } = {}
+) {
   return {
     snapshotMode,
-    snapshotUpdatedAt: snapshotRow?.updatedAt ? new Date(snapshotRow.updatedAt).toISOString() : null,
+    snapshotUpdatedAt: snapshotRow?.updatedAt
+      ? new Date(snapshotRow.updatedAt).toISOString()
+      : null,
     snapshotVersion: Number(snapshotRow?.snapshotVersion) || 0,
     stale,
     realmId,
@@ -83,7 +93,12 @@ function buildQueueHealth(queueOverview = null) {
 }
 
 class WorldRuntimeGateway {
-  constructor({ worldRuntimeRepository, realmId = config.REALM_ID, snapshotTtlMs = 15000, logger = console } = {}) {
+  constructor({
+    worldRuntimeRepository,
+    realmId = config.REALM_ID,
+    snapshotTtlMs = 15000,
+    logger = console,
+  } = {}) {
     this.worldRuntimeRepository = worldRuntimeRepository;
     this.realmId = realmId;
     this.snapshotTtlMs = Math.max(1000, Number(snapshotTtlMs) || 15000);
@@ -134,18 +149,26 @@ class WorldRuntimeGateway {
     });
   }
 
-  hydrateSnapshotState({ snapshotRow = null, actorRow = null, user = null, snapshotMode = 'database' } = {}) {
+  hydrateSnapshotState({
+    snapshotRow = null,
+    actorRow = null,
+    user = null,
+    snapshotMode = 'database',
+  } = {}) {
     if (!snapshotRow?.snapshotJson) {
       return buildEmptySnapshot(user, { snapshotMode, realmId: this.realmId });
     }
 
     const snapshotJson = snapshotRow.snapshotJson || {};
     const snapshotUpdatedAt = snapshotRow.updatedAt ? new Date(snapshotRow.updatedAt).getTime() : 0;
-    const stale = !snapshotUpdatedAt || (Date.now() - snapshotUpdatedAt) > this.snapshotTtlMs;
+    const stale = !snapshotUpdatedAt || Date.now() - snapshotUpdatedAt > this.snapshotTtlMs;
 
     return {
       ...snapshotJson,
-      self: actorRow?.payloadJson || snapshotJson.self || (user ? buildEmptySnapshot(user, { snapshotMode, realmId: this.realmId }).self : null),
+      self:
+        actorRow?.payloadJson ||
+        snapshotJson.self ||
+        (user ? buildEmptySnapshot(user, { snapshotMode, realmId: this.realmId }).self : null),
       runtime: buildRuntimeMeta(snapshotRow, {
         snapshotMode,
         realmId: this.realmId,
@@ -155,7 +178,9 @@ class WorldRuntimeGateway {
   }
 
   async getSpectatorState() {
-    const snapshotRow = await this.worldRuntimeRepository.getLatestWorldRuntimeSnapshot(this.realmId);
+    const snapshotRow = await this.worldRuntimeRepository.getLatestWorldRuntimeSnapshot(
+      this.realmId
+    );
     return this.hydrateSnapshotState({ snapshotRow, user: null, snapshotMode: 'database' });
   }
 
@@ -166,7 +191,9 @@ class WorldRuntimeGateway {
 
     const [snapshotRow, actorRow] = await Promise.all([
       this.worldRuntimeRepository.getLatestWorldRuntimeSnapshot(this.realmId),
-      user?.id ? this.worldRuntimeRepository.getActorRuntimeSnapshot(this.realmId, user.id) : Promise.resolve(null),
+      user?.id
+        ? this.worldRuntimeRepository.getActorRuntimeSnapshot(this.realmId, user.id)
+        : Promise.resolve(null),
     ]);
 
     return this.hydrateSnapshotState({
@@ -207,15 +234,17 @@ class WorldRuntimeGateway {
     }
 
     const elapsedMs = Date.now() - startedAtMs;
-    const snapshotUpdatedAtMs = snapshotRow?.updatedAt ? new Date(snapshotRow.updatedAt).getTime() : 0;
-    const snapshotStale = !snapshotUpdatedAtMs || (Date.now() - snapshotUpdatedAtMs) > this.snapshotTtlMs;
+    const snapshotUpdatedAtMs = snapshotRow?.updatedAt
+      ? new Date(snapshotRow.updatedAt).getTime()
+      : 0;
+    const snapshotStale =
+      !snapshotUpdatedAtMs || Date.now() - snapshotUpdatedAtMs > this.snapshotTtlMs;
     const queueHealth = dbError
       ? { status: 'down', overview: null }
       : buildQueueHealth(queueOverview);
 
-    const status = dbError || snapshotStale || queueHealth.status === 'degraded'
-      ? 'degraded'
-      : 'ok';
+    const status =
+      dbError || snapshotStale || queueHealth.status === 'degraded' ? 'degraded' : 'ok';
 
     return {
       status,
@@ -229,7 +258,9 @@ class WorldRuntimeGateway {
         stale: snapshotStale,
         status: snapshotStale ? 'stale' : 'ok',
         snapshotVersion: Number(snapshotRow?.snapshotVersion) || 0,
-        snapshotUpdatedAt: snapshotRow?.updatedAt ? new Date(snapshotRow.updatedAt).toISOString() : null,
+        snapshotUpdatedAt: snapshotRow?.updatedAt
+          ? new Date(snapshotRow.updatedAt).toISOString()
+          : null,
       },
       queue: queueHealth,
       latestEventSeq: Number(latestEventSeq) || 0,

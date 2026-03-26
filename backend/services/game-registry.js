@@ -2,8 +2,10 @@ const GAME_REGISTRY = Object.freeze([
   Object.freeze({
     slug: 'garden-quest',
     name: 'Garden Quest',
-    tagline: 'Explore um jardim vivo, converse com outros jogadores e dispute os recordes do servidor.',
-    description: 'Aventura 3D multiplayer com perfil persistente, chat, ranking e simulacao sincronizada pelo backend.',
+    tagline:
+      'Explore um jardim vivo, converse com outros jogadores e dispute os recordes do servidor.',
+    description:
+      'Aventura 3D multiplayer com perfil persistente, chat, ranking e simulacao sincronizada pelo backend.',
     route: '/games/garden-quest/',
     legacyRoute: '/game.html',
     status: 'active',
@@ -21,9 +23,7 @@ function normalizeSlug(value) {
   }
 
   const normalizedValue = value.trim().toLowerCase();
-  return /^[a-z0-9-]{2,64}$/.test(normalizedValue)
-    ? normalizedValue
-    : null;
+  return /^[a-z0-9-]{2,64}$/.test(normalizedValue) ? normalizedValue : null;
 }
 
 function listGames() {
@@ -37,9 +37,7 @@ function getGameBySlug(slug) {
   }
 
   const match = GAME_REGISTRY.find((game) => game.slug === normalizedSlug);
-  return match
-    ? { ...match }
-    : null;
+  return match ? { ...match } : null;
 }
 
 module.exports = {

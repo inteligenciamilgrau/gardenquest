@@ -52,12 +52,34 @@ class AgentGovernanceService {
   getPolicy(agent) {
     const raw = agent?.policyJson && typeof agent.policyJson === 'object' ? agent.policyJson : {};
     return {
-      dailyRunBudget: normalizeInteger(raw.dailyRunBudget, config.AGENT_DEFAULT_DAILY_RUN_BUDGET, { min: 1, max: 100000 }),
-      minDecisionIntervalMs: normalizeInteger(raw.minDecisionIntervalMs, config.AGENT_DEFAULT_MIN_DECISION_INTERVAL_MS, { min: 250, max: 600000 }),
-      failureThreshold: normalizeInteger(raw.failureThreshold, config.AGENT_CIRCUIT_FAILURE_THRESHOLD, { min: 1, max: 100 }),
-      cooldownMs: normalizeInteger(raw.cooldownMs, config.AGENT_CIRCUIT_COOLDOWN_MS, { min: 1000, max: 3600000 }),
-      providerFailureThreshold: normalizeInteger(raw.providerFailureThreshold, config.AGENT_PROVIDER_CIRCUIT_FAILURE_THRESHOLD, { min: 1, max: 200 }),
-      providerCooldownMs: normalizeInteger(raw.providerCooldownMs, config.AGENT_PROVIDER_CIRCUIT_COOLDOWN_MS, { min: 1000, max: 3600000 }),
+      dailyRunBudget: normalizeInteger(raw.dailyRunBudget, config.AGENT_DEFAULT_DAILY_RUN_BUDGET, {
+        min: 1,
+        max: 100000,
+      }),
+      minDecisionIntervalMs: normalizeInteger(
+        raw.minDecisionIntervalMs,
+        config.AGENT_DEFAULT_MIN_DECISION_INTERVAL_MS,
+        { min: 250, max: 600000 }
+      ),
+      failureThreshold: normalizeInteger(
+        raw.failureThreshold,
+        config.AGENT_CIRCUIT_FAILURE_THRESHOLD,
+        { min: 1, max: 100 }
+      ),
+      cooldownMs: normalizeInteger(raw.cooldownMs, config.AGENT_CIRCUIT_COOLDOWN_MS, {
+        min: 1000,
+        max: 3600000,
+      }),
+      providerFailureThreshold: normalizeInteger(
+        raw.providerFailureThreshold,
+        config.AGENT_PROVIDER_CIRCUIT_FAILURE_THRESHOLD,
+        { min: 1, max: 200 }
+      ),
+      providerCooldownMs: normalizeInteger(
+        raw.providerCooldownMs,
+        config.AGENT_PROVIDER_CIRCUIT_COOLDOWN_MS,
+        { min: 1000, max: 3600000 }
+      ),
     };
   }
 
@@ -99,30 +121,62 @@ class AgentGovernanceService {
     const providerState = this.getState(this.providerState, providerKey);
 
     if (agentState.openUntil > now) {
-      throw this.buildBlockedError('Agent circuit breaker aberto temporariamente.', 'agent_circuit_open', agentState.openUntil - now, 'agent');
+      throw this.buildBlockedError(
+        'Agent circuit breaker aberto temporariamente.',
+        'agent_circuit_open',
+        agentState.openUntil - now,
+        'agent'
+      );
     }
 
     if (providerState.openUntil > now) {
-      throw this.buildBlockedError('Provider temporariamente em cooldown para este runtime.', 'provider_circuit_open', providerState.openUntil - now, 'provider');
+      throw this.buildBlockedError(
+        'Provider temporariamente em cooldown para este runtime.',
+        'provider_circuit_open',
+        providerState.openUntil - now,
+        'provider'
+      );
     }
 
-    if (agent?.mode === 'remote_endpoint' && this.agentRepository?.getAgentEndpointHealthByAgentId) {
-      const health = await this.agentRepository.getAgentEndpointHealthByAgentId(agent.id).catch(() => null);
-      const quarantinedUntilMs = health?.quarantinedUntil ? new Date(health.quarantinedUntil).getTime() : 0;
+    if (
+      agent?.mode === 'remote_endpoint' &&
+      this.agentRepository?.getAgentEndpointHealthByAgentId
+    ) {
+      const health = await this.agentRepository
+        .getAgentEndpointHealthByAgentId(agent.id)
+        .catch(() => null);
+      const quarantinedUntilMs = health?.quarantinedUntil
+        ? new Date(health.quarantinedUntil).getTime()
+        : 0;
       if (quarantinedUntilMs && quarantinedUntilMs > now) {
-        throw this.buildBlockedError('Endpoint remoto em quarantine temporaria.', 'endpoint_quarantined', quarantinedUntilMs - now, 'endpoint');
+        throw this.buildBlockedError(
+          'Endpoint remoto em quarantine temporaria.',
+          'endpoint_quarantined',
+          quarantinedUntilMs - now,
+          'endpoint'
+        );
       }
     }
 
     const elapsed = now - (agentState.lastAttemptAt || 0);
     if (agentState.lastAttemptAt && elapsed < policy.minDecisionIntervalMs) {
-      throw this.buildBlockedError('Agent rate limited pelo runtime.', 'agent_rate_limited', policy.minDecisionIntervalMs - elapsed, 'agent');
+      throw this.buildBlockedError(
+        'Agent rate limited pelo runtime.',
+        'agent_rate_limited',
+        policy.minDecisionIntervalMs - elapsed,
+        'agent'
+      );
     }
 
     if (this.agentRepository?.getAgentDailyUsage) {
       const usage = await this.agentRepository.getAgentDailyUsage(agent.id);
       if ((usage?.runCount || 0) >= policy.dailyRunBudget) {
-        throw this.buildBlockedError('Agent excedeu o budget diario de execucoes.', 'daily_budget_exceeded', 60_000, 'budget');
+        throw this.buildBlockedError(
+          'Agent excedeu o budget diario de execucoes.',
+          'daily_budget_exceeded',
+          60_000,
+          'budget'
+        );
       }
     }
 
@@ -178,7 +232,9 @@ class AgentGovernanceService {
 
     if (providerState.consecutiveFailures >= resolvedPolicy.providerFailureThreshold) {
       providerState.openUntil = now + resolvedPolicy.providerCooldownMs;
-      this.logger.warn(`Provider circuit opened for ${providerKey} (${resolvedPolicy.providerCooldownMs}ms)`);
+      this.logger.warn(
+        `Provider circuit opened for ${providerKey} (${resolvedPolicy.providerCooldownMs}ms)`
+      );
     }
   }
 }

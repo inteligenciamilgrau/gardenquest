@@ -42,11 +42,9 @@ function parseLastEventSeq(value) {
     return 0;
   }
 
-  const normalized = text.includes(':')
-    ? text.split(':').pop()
-    : text;
+  const normalized = text.includes(':') ? text.split(':').pop() : text;
   const match = normalized.match(/^(\d+)$/);
-  return match ? (Number.parseInt(match[1], 10) || 0) : 0;
+  return match ? Number.parseInt(match[1], 10) || 0 : 0;
 }
 
 /**
@@ -120,11 +118,14 @@ class WorldEventStreamService {
       });
     }
 
-    this.pollHandle = setInterval(() => {
-      this.poll().catch((error) => {
-        this.logger.error('World event stream poll failed:', error.message);
-      });
-    }, this.notificationBus ? this.fallbackPollMs : this.pollMs);
+    this.pollHandle = setInterval(
+      () => {
+        this.poll().catch((error) => {
+          this.logger.error('World event stream poll failed:', error.message);
+        });
+      },
+      this.notificationBus ? this.fallbackPollMs : this.pollMs
+    );
 
     this.heartbeatHandle = setInterval(() => {
       this.sendHeartbeats().catch((error) => {
@@ -363,8 +364,9 @@ class WorldEventStreamService {
   }
 
   async sendInitialSnapshot(subscriber) {
-    const snapshotRow = this.lastBroadcastSnapshotRow
-      || await this.worldRuntimeRepository.getLatestWorldRuntimeSnapshot(this.realmId);
+    const snapshotRow =
+      this.lastBroadcastSnapshotRow ||
+      (await this.worldRuntimeRepository.getLatestWorldRuntimeSnapshot(this.realmId));
     const payload = await this.buildPayloadForSubscriber(subscriber, snapshotRow);
     const cursor = this.buildCursor(snapshotRow) || 'bootstrap';
     subscriber.lastSentCursor = cursor;
@@ -399,10 +401,14 @@ class WorldEventStreamService {
 
   async buildDeltaForSubscriber(subscriber, snapshotRow, previousSnapshotRow) {
     const fullPayload = await this.buildPayloadForSubscriber(subscriber, snapshotRow);
-    return buildSnapshotDelta(previousSnapshotRow?.snapshotJson || null, snapshotRow?.snapshotJson || null, {
-      selfPayload: subscriber.kind === 'player' ? fullPayload.self : undefined,
-      runtimeMeta: fullPayload.runtime,
-    });
+    return buildSnapshotDelta(
+      previousSnapshotRow?.snapshotJson || null,
+      snapshotRow?.snapshotJson || null,
+      {
+        selfPayload: subscriber.kind === 'player' ? fullPayload.self : undefined,
+        runtimeMeta: fullPayload.runtime,
+      }
+    );
   }
 
   async touchSubscriber(subscriber, force = false) {
@@ -411,13 +417,16 @@ class WorldEventStreamService {
     }
 
     const now = Date.now();
-    if (!force && (now - subscriber.lastTouchAt) < this.touchSessionMs) {
+    if (!force && now - subscriber.lastTouchAt < this.touchSessionMs) {
       return;
     }
 
     subscriber.lastTouchAt = now;
     await this.worldGateway.touchPlayerSession(subscriber.user).catch((error) => {
-      this.logger.warn(`Failed to touch player session for stream ${subscriber.id}:`, error.message);
+      this.logger.warn(
+        `Failed to touch player session for stream ${subscriber.id}:`,
+        error.message
+      );
     });
   }
 
@@ -480,7 +489,9 @@ class WorldEventStreamService {
     this.pollInFlight = true;
 
     try {
-      const snapshotRow = await this.worldRuntimeRepository.getLatestWorldRuntimeSnapshot(this.realmId);
+      const snapshotRow = await this.worldRuntimeRepository.getLatestWorldRuntimeSnapshot(
+        this.realmId
+      );
       const cursor = this.buildCursor(snapshotRow);
       const changed = cursor && cursor !== this.lastBroadcastCursor;
 
@@ -488,14 +499,19 @@ class WorldEventStreamService {
         const previousSnapshotRow = this.lastBroadcastSnapshotRow;
         const events = await this.listEventsSince(this.lastBroadcastEventSeq);
         if (events.length > 0) {
-          this.lastBroadcastEventSeq = Number(events[events.length - 1].seq) || this.lastBroadcastEventSeq;
+          this.lastBroadcastEventSeq =
+            Number(events[events.length - 1].seq) || this.lastBroadcastEventSeq;
         }
 
         this.lastBroadcastCursor = cursor;
         this.lastBroadcastSnapshotRow = snapshotRow;
         await this.broadcastUpdate(snapshotRow, previousSnapshotRow, cursor, events);
       } else {
-        await Promise.all(Array.from(this.subscribers.values()).map((subscriber) => this.touchSubscriber(subscriber, false)));
+        await Promise.all(
+          Array.from(this.subscribers.values()).map((subscriber) =>
+            this.touchSubscriber(subscriber, false)
+          )
+        );
       }
     } finally {
       this.pollInFlight = false;
@@ -508,7 +524,7 @@ class WorldEventStreamService {
     }
 
     const snapshotVersion = Number(snapshotRow?.snapshotVersion) || 0;
-    return snapshotVersion < 1 || (snapshotVersion % this.snapshotEveryVersions) === 0;
+    return snapshotVersion < 1 || snapshotVersion % this.snapshotEveryVersions === 0;
   }
 
   async broadcastUpdate(snapshotRow, previousSnapshotRow, cursor, events) {
@@ -517,49 +533,55 @@ class WorldEventStreamService {
     const publicPayload = sendFullSnapshot
       ? await this.buildPayloadForSubscriber({ kind: 'public' }, snapshotRow)
       : await this.buildDeltaForSubscriber({ kind: 'public' }, snapshotRow, previousSnapshotRow);
-    const eventBatch = events.length > 0
-      ? {
-        realmId: this.realmId,
-        sinceSeq: Math.max(0, (Number(events[0]?.seq) || 1) - 1),
-        untilSeq: Number(events[events.length - 1]?.seq) || this.lastBroadcastEventSeq,
-        entries: events,
-      }
-      : null;
+    const eventBatch =
+      events.length > 0
+        ? {
+            realmId: this.realmId,
+            sinceSeq: Math.max(0, (Number(events[0]?.seq) || 1) - 1),
+            untilSeq: Number(events[events.length - 1]?.seq) || this.lastBroadcastEventSeq,
+            entries: events,
+          }
+        : null;
 
-    await Promise.all(subscribers.map(async (subscriber) => {
-      await this.touchSubscriber(subscriber, false);
+    await Promise.all(
+      subscribers.map(async (subscriber) => {
+        await this.touchSubscriber(subscriber, false);
 
-      const payload = subscriber.kind === 'public'
-        ? publicPayload
-        : (sendFullSnapshot
-          ? await this.buildPayloadForSubscriber(subscriber, snapshotRow)
-          : await this.buildDeltaForSubscriber(subscriber, snapshotRow, previousSnapshotRow));
+        const payload =
+          subscriber.kind === 'public'
+            ? publicPayload
+            : sendFullSnapshot
+              ? await this.buildPayloadForSubscriber(subscriber, snapshotRow)
+              : await this.buildDeltaForSubscriber(subscriber, snapshotRow, previousSnapshotRow);
 
-      subscriber.lastSentCursor = cursor;
-      writeSseEvent(subscriber.res, {
-        event: sendFullSnapshot ? 'snapshot' : 'delta',
-        id: sendFullSnapshot ? `snapshot:${cursor}` : `delta:${cursor}`,
-        data: payload,
-      });
-
-      if (eventBatch) {
-        subscriber.lastSeenEventSeq = eventBatch.untilSeq;
+        subscriber.lastSentCursor = cursor;
         writeSseEvent(subscriber.res, {
-          event: 'world_event_batch',
-          id: eventBatch.untilSeq,
-          data: eventBatch,
+          event: sendFullSnapshot ? 'snapshot' : 'delta',
+          id: sendFullSnapshot ? `snapshot:${cursor}` : `delta:${cursor}`,
+          data: payload,
         });
-      }
-    }));
+
+        if (eventBatch) {
+          subscriber.lastSeenEventSeq = eventBatch.untilSeq;
+          writeSseEvent(subscriber.res, {
+            event: 'world_event_batch',
+            id: eventBatch.untilSeq,
+            data: eventBatch,
+          });
+        }
+      })
+    );
   }
 
   async sendHeartbeats() {
     const subscribers = Array.from(this.subscribers.values());
 
-    await Promise.all(subscribers.map(async (subscriber) => {
-      await this.touchSubscriber(subscriber, false);
-      writeSseComment(subscriber.res, `heartbeat ${new Date().toISOString()}`);
-    }));
+    await Promise.all(
+      subscribers.map(async (subscriber) => {
+        await this.touchSubscriber(subscriber, false);
+        writeSseComment(subscriber.res, `heartbeat ${new Date().toISOString()}`);
+      })
+    );
   }
 }
 

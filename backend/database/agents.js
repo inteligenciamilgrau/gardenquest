@@ -1,15 +1,21 @@
 const { getPool } = require('./postgres');
 
 function normalizeMode(mode) {
-  return ['hosted_api_key', 'remote_endpoint', 'server_managed'].includes(mode) ? mode : 'hosted_api_key';
+  return ['hosted_api_key', 'remote_endpoint', 'server_managed'].includes(mode)
+    ? mode
+    : 'hosted_api_key';
 }
 
 function normalizeStatus(status) {
-  return ['active', 'paused', 'revoked', 'error', 'quarantined'].includes(status) ? status : 'active';
+  return ['active', 'paused', 'revoked', 'error', 'quarantined'].includes(status)
+    ? status
+    : 'active';
 }
 
 function normalizeProvider(provider) {
-  return String(provider || 'openai').trim().toLowerCase();
+  return String(provider || 'openai')
+    .trim()
+    .toLowerCase();
 }
 
 function normalizeDateKey(value = new Date()) {
@@ -154,7 +160,15 @@ async function ensureAgentTables() {
   `);
 }
 
-async function createAgent({ id, ownerUserId, name, mode, provider, routeHint = null, policyJson = {} }) {
+async function createAgent({
+  id,
+  ownerUserId,
+  name,
+  mode,
+  provider,
+  routeHint = null,
+  policyJson = {},
+}) {
   const db = getPool();
   const result = await db.query(
     `
@@ -164,7 +178,15 @@ async function createAgent({ id, ownerUserId, name, mode, provider, routeHint = 
       VALUES ($1, $2, $3, $4, $5, 'active', $6, $7::jsonb, timezone('utc', now()))
       RETURNING id, owner_user_id AS "ownerUserId", name, mode, provider, status, route_hint AS "routeHint", policy_json AS "policyJson", created_at AS "createdAt", updated_at AS "updatedAt"
     `,
-    [id, ownerUserId, name, normalizeMode(mode), normalizeProvider(provider), routeHint, JSON.stringify(policyJson || {})]
+    [
+      id,
+      ownerUserId,
+      name,
+      normalizeMode(mode),
+      normalizeProvider(provider),
+      routeHint,
+      JSON.stringify(policyJson || {}),
+    ]
   );
   return result.rows[0];
 }
@@ -479,7 +501,17 @@ async function recordAgentRun({
       INSERT INTO public.agent_runs (agent_id, status, error_code, latency_ms, provider_mode, provider_name, estimated_input_tokens, estimated_output_tokens, count_towards_budget)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
     `,
-    [agentId, status, errorCode, normalizedLatencyMs || null, providerMode, providerName, normalizedInputTokens || null, normalizedOutputTokens || null, normalizedCountTowardsBudget]
+    [
+      agentId,
+      status,
+      errorCode,
+      normalizedLatencyMs || null,
+      providerMode,
+      providerName,
+      normalizedInputTokens || null,
+      normalizedOutputTokens || null,
+      normalizedCountTowardsBudget,
+    ]
   );
 
   const isSuccess = status === 'success';
@@ -517,8 +549,8 @@ async function recordAgentRun({
     [
       agentId,
       isCounted ? 1 : 0,
-      (isSuccess && isCounted) ? 1 : 0,
-      (!isSuccess && !isBlocked && isCounted) ? 1 : 0,
+      isSuccess && isCounted ? 1 : 0,
+      !isSuccess && !isBlocked && isCounted ? 1 : 0,
       isBlocked ? 1 : 0,
       normalizedLatencyMs,
       normalizedInputTokens,
@@ -540,7 +572,12 @@ async function getAgentEndpointHealthByAgentId(agentId) {
   return result.rows[0] || null;
 }
 
-async function recordAgentEndpointFailure({ agentId, errorCode = 'remote_error', quarantineThreshold = 6, quarantineMs = 900000 }) {
+async function recordAgentEndpointFailure({
+  agentId,
+  errorCode = 'remote_error',
+  quarantineThreshold = 6,
+  quarantineMs = 900000,
+}) {
   const db = getPool();
   const result = await db.query(
     `
@@ -567,12 +604,22 @@ async function recordAgentEndpointFailure({ agentId, errorCode = 'remote_error',
         updated_at = timezone('utc', now())
       RETURNING agent_id AS "agentId", failure_count AS "failureCount", suspicious_count AS "suspiciousCount", last_error_code AS "lastErrorCode", last_reason AS "lastReason", quarantined_until AS "quarantinedUntil", updated_at AS "updatedAt"
     `,
-    [agentId, String(errorCode || 'remote_error'), Math.max(1, Math.trunc(quarantineThreshold) || 6), Math.max(1000, Math.trunc(quarantineMs) || 900000)]
+    [
+      agentId,
+      String(errorCode || 'remote_error'),
+      Math.max(1, Math.trunc(quarantineThreshold) || 6),
+      Math.max(1000, Math.trunc(quarantineMs) || 900000),
+    ]
   );
   return result.rows[0] || null;
 }
 
-async function recordAgentEndpointSuspicion({ agentId, reason = 'moderation_flag', quarantineThreshold = 2, quarantineMs = 900000 }) {
+async function recordAgentEndpointSuspicion({
+  agentId,
+  reason = 'moderation_flag',
+  quarantineThreshold = 2,
+  quarantineMs = 900000,
+}) {
   const db = getPool();
   const result = await db.query(
     `
@@ -599,7 +646,12 @@ async function recordAgentEndpointSuspicion({ agentId, reason = 'moderation_flag
         updated_at = timezone('utc', now())
       RETURNING agent_id AS "agentId", failure_count AS "failureCount", suspicious_count AS "suspiciousCount", last_error_code AS "lastErrorCode", last_reason AS "lastReason", quarantined_until AS "quarantinedUntil", updated_at AS "updatedAt"
     `,
-    [agentId, String(reason || 'moderation_flag').slice(0, 255), Math.max(1, Math.trunc(quarantineThreshold) || 2), Math.max(1000, Math.trunc(quarantineMs) || 900000)]
+    [
+      agentId,
+      String(reason || 'moderation_flag').slice(0, 255),
+      Math.max(1, Math.trunc(quarantineThreshold) || 2),
+      Math.max(1000, Math.trunc(quarantineMs) || 900000),
+    ]
   );
   return result.rows[0] || null;
 }

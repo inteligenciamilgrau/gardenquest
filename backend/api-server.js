@@ -19,7 +19,10 @@ const { WorldEventStreamService } = require('./services/world/WorldEventStreamSe
 const { PostgresNotificationBus } = require('./services/world/PostgresNotificationBus');
 const { WORLD_RUNTIME_BUS_CHANNEL } = require('./database/world-runtime');
 const { AiGameEngine } = require('./games/garden-quest/engine');
-const { createRuntimeSecretVault, initializeRuntimeDatabase } = require('./bootstrap/runtime-bootstrap');
+const {
+  createRuntimeSecretVault,
+  initializeRuntimeDatabase,
+} = require('./bootstrap/runtime-bootstrap');
 
 const app = express();
 
@@ -72,18 +75,24 @@ const systemRoutes = require('./routes/logs');
 app.use('/auth', createAuthRoutes({ gameEngine: bootstrapEngine, worldGateway }));
 app.use('/api/v1/platform', createPlatformRoutes());
 app.use('/api/v1/system', systemRoutes);
-app.use('/api/v1/ai-game', createAiGameRoutes({
-  gameEngine: bootstrapEngine,
-  worldGateway,
-  worldEventStreamService,
-  worldRuntimeRepository,
-}));
-app.use('/api/v1/games/garden-quest', createAiGameRoutes({
-  gameEngine: bootstrapEngine,
-  worldGateway,
-  worldEventStreamService,
-  worldRuntimeRepository,
-}));
+app.use(
+  '/api/v1/ai-game',
+  createAiGameRoutes({
+    gameEngine: bootstrapEngine,
+    worldGateway,
+    worldEventStreamService,
+    worldRuntimeRepository,
+  })
+);
+app.use(
+  '/api/v1/games/garden-quest',
+  createAiGameRoutes({
+    gameEngine: bootstrapEngine,
+    worldGateway,
+    worldEventStreamService,
+    worldRuntimeRepository,
+  })
+);
 app.use('/api/v1/agents', createAgentRoutes({ agentService, authMiddleware: requireAuth }));
 
 app.get('/health', async (_req, res) => {
@@ -162,7 +171,9 @@ async function startServer() {
   httpServer = app.listen(config.PORT, '0.0.0.0', () => {
     console.log(`GardenQuest API server running on port ${config.PORT}`);
     console.log(`Realm runtime mode: database snapshot / queue (${config.REALM_ID})`);
-    console.log(`Realtime mode: SSE stream ${config.WORLD_EVENT_STREAM_ENABLED ? 'enabled' : 'disabled'}`);
+    console.log(
+      `Realtime mode: SSE stream ${config.WORLD_EVENT_STREAM_ENABLED ? 'enabled' : 'disabled'}`
+    );
     console.log(`Notify bus: ${config.WORLD_RUNTIME_BUS_ENABLED ? 'enabled' : 'disabled'}`);
   });
 

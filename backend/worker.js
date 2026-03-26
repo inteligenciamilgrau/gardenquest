@@ -8,7 +8,10 @@ const { WORLD_COMMAND_BUS_CHANNEL } = require('./database/world-runtime');
 const { AiGameEngine } = require('./games/garden-quest/engine');
 const { RealmLeaseService } = require('./services/realm/RealmLeaseService');
 const { WorldRuntimeWorker } = require('./services/world/WorldRuntimeWorker');
-const { createRuntimeSecretVault, initializeRuntimeDatabase } = require('./bootstrap/runtime-bootstrap');
+const {
+  createRuntimeSecretVault,
+  initializeRuntimeDatabase,
+} = require('./bootstrap/runtime-bootstrap');
 
 const secretVault = createRuntimeSecretVault({
   agentRepository,
@@ -37,7 +40,10 @@ const realmLeaseService = new RealmLeaseService({
 });
 
 const commandNotificationBus = config.WORLD_RUNTIME_BUS_ENABLED
-  ? new PostgresNotificationBus({ channel: WORLD_COMMAND_BUS_CHANNEL, name: 'world-command-worker' })
+  ? new PostgresNotificationBus({
+      channel: WORLD_COMMAND_BUS_CHANNEL,
+      name: 'world-command-worker',
+    })
   : null;
 
 const worldWorker = new WorldRuntimeWorker({

@@ -5,13 +5,13 @@ function createLeaderboardSystem({
   LEADERBOARD_REFRESH_MS,
 }) {
   function maybeRefreshLeaderboards(engine, now = Date.now()) {
-    if ((now - engine.state.leaderboardLastUpdatedAt) >= LEADERBOARD_REFRESH_MS) {
+    if (now - engine.state.leaderboardLastUpdatedAt >= LEADERBOARD_REFRESH_MS) {
       engine.refreshLeaderboard().catch((error) => {
         engine.logger.error('Leaderboard refresh failed:', error.message);
       });
     }
 
-    if ((now - engine.state.soccerLeaderboardLastUpdatedAt) >= LEADERBOARD_REFRESH_MS) {
+    if (now - engine.state.soccerLeaderboardLastUpdatedAt >= LEADERBOARD_REFRESH_MS) {
       engine.refreshSoccerLeaderboard().catch((error) => {
         engine.logger.error('Soccer leaderboard refresh failed:', error.message);
       });

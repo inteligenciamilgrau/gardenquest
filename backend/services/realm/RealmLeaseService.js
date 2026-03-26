@@ -92,9 +92,7 @@ class RealmLeaseService {
     });
 
     const isLeader = Boolean(
-      lease
-      && lease.ownerInstanceId === this.ownerInstanceId
-      && lease.leaseToken === proposedToken
+      lease && lease.ownerInstanceId === this.ownerInstanceId && lease.leaseToken === proposedToken
     );
 
     this.currentLeaseToken = isLeader ? proposedToken : null;
@@ -134,7 +132,11 @@ class RealmLeaseService {
       this.snapshot = {
         realmId: lease?.realmId || this.realmId,
         ownerInstanceId: lease?.ownerInstanceId || null,
-        isLeader: Boolean(this.currentLeaseToken && lease?.ownerInstanceId === this.ownerInstanceId && lease?.leaseToken === this.currentLeaseToken),
+        isLeader: Boolean(
+          this.currentLeaseToken &&
+          lease?.ownerInstanceId === this.ownerInstanceId &&
+          lease?.leaseToken === this.currentLeaseToken
+        ),
         leaseToken: this.currentLeaseToken,
         expiresAt: lease?.expiresAt || null,
         renewedAt: lease?.renewedAt || null,

@@ -91,7 +91,13 @@ const LEADERBOARD_LIMIT = 10;
 const LEADERBOARD_REFRESH_MS = 10000;
 const PLAYER_NICKNAME_MAX_LENGTH = 24;
 const DEFAULT_PLAYER_OUTFIT_COLOR = '#2563eb';
-const DEFAULT_AGENT_OUTFIT_COLORS = Object.freeze(['#7c3aed', '#0891b2', '#dc2626', '#16a34a', '#ea580c']);
+const DEFAULT_AGENT_OUTFIT_COLORS = Object.freeze([
+  '#7c3aed',
+  '#0891b2',
+  '#dc2626',
+  '#16a34a',
+  '#ea580c',
+]);
 const AGENT_WORLD_SYNC_INTERVAL_MS = Math.max(1000, Number(config.AGENT_WORLD_SYNC_MS) || 30000);
 const PLAYER_CHAT_HISTORY_LIMIT = 20;
 const DEFAULT_CHAT_BLOCKED_WORDS = Object.freeze([
@@ -208,9 +214,11 @@ function escapeRegex(value) {
 }
 
 function getBlockedChatWords() {
-  return (config.PLAYER_CHAT_BLOCKED_WORDS.length > 0
-    ? config.PLAYER_CHAT_BLOCKED_WORDS
-    : DEFAULT_CHAT_BLOCKED_WORDS)
+  return (
+    config.PLAYER_CHAT_BLOCKED_WORDS.length > 0
+      ? config.PLAYER_CHAT_BLOCKED_WORDS
+      : DEFAULT_CHAT_BLOCKED_WORDS
+  )
     .map((word) => normalizeModerationText(word))
     .filter(Boolean);
 }
@@ -253,7 +261,7 @@ function hashString(value) {
   const text = String(value || '');
 
   for (let index = 0; index < text.length; index += 1) {
-    hash = ((hash << 5) - hash) + text.charCodeAt(index);
+    hash = (hash << 5) - hash + text.charCodeAt(index);
     hash |= 0;
   }
 
@@ -271,7 +279,8 @@ function buildPlayerAppearance(appearance = {}) {
 }
 
 function buildAgentAppearance(appearance = {}, actorId = '') {
-  const fallbackColor = DEFAULT_AGENT_OUTFIT_COLORS[hashString(actorId) % DEFAULT_AGENT_OUTFIT_COLORS.length];
+  const fallbackColor =
+    DEFAULT_AGENT_OUTFIT_COLORS[hashString(actorId) % DEFAULT_AGENT_OUTFIT_COLORS.length];
   return {
     outfitColor: sanitizeHexColor(appearance?.outfitColor) || fallbackColor,
   };
@@ -279,7 +288,7 @@ function buildAgentAppearance(appearance = {}, actorId = '') {
 
 function formatLogDetailValue(value) {
   const normalized = sanitizeText(String(value ?? ''), 255) || '-';
-  return `"${normalized.replace(/"/g, '\'')}"`;
+  return `"${normalized.replace(/"/g, "'")}"`;
 }
 
 function buildPlayerLogDetails(player, details = null) {
@@ -312,7 +321,7 @@ function buildPlayerLogContext(player, { userAgent = 'backend-game', details = n
 function distanceBetween(a, b) {
   const dx = (a?.x || 0) - (b?.x || 0);
   const dz = (a?.z || 0) - (b?.z || 0);
-  return Math.sqrt((dx * dx) + (dz * dz));
+  return Math.sqrt(dx * dx + dz * dz);
 }
 
 function buildRoutePointKey(point) {
@@ -322,16 +331,18 @@ function buildRoutePointKey(point) {
 function isPointWithinWorldBounds(worldState, point, margin = 0) {
   const bounds = Number.isFinite(worldState?.bounds) ? worldState.bounds : 45;
   return (
-    (Number(point?.x) || 0) >= (-bounds + margin)
-    && (Number(point?.x) || 0) <= (bounds - margin)
-    && (Number(point?.z) || 0) >= (-bounds + margin)
-    && (Number(point?.z) || 0) <= (bounds - margin)
+    (Number(point?.x) || 0) >= -bounds + margin &&
+    (Number(point?.x) || 0) <= bounds - margin &&
+    (Number(point?.z) || 0) >= -bounds + margin &&
+    (Number(point?.z) || 0) <= bounds - margin
   );
 }
 
 function isRoutePointWalkable(worldState, point, padding = PLAYER_COLLISION_RADIUS) {
-  return isPointWithinWorldBounds(worldState, point, 0.05)
-    && !isPositionBlocked(worldState, point, padding);
+  return (
+    isPointWithinWorldBounds(worldState, point, 0.05) &&
+    !isPositionBlocked(worldState, point, padding)
+  );
 }
 
 function isRouteSegmentClear(worldState, start, end, padding = PLAYER_COLLISION_RADIUS) {
@@ -339,7 +350,10 @@ function isRouteSegmentClear(worldState, start, end, padding = PLAYER_COLLISION_
     return false;
   }
 
-  if (!isPointWithinWorldBounds(worldState, start, 0.05) || !isRoutePointWalkable(worldState, end, padding)) {
+  if (
+    !isPointWithinWorldBounds(worldState, start, 0.05) ||
+    !isRoutePointWalkable(worldState, end, padding)
+  ) {
     return false;
   }
 
@@ -353,12 +367,15 @@ function isRouteSegmentClear(worldState, start, end, padding = PLAYER_COLLISION_
   for (let index = 1; index < sampleCount; index += 1) {
     const progress = index / sampleCount;
     const samplePoint = {
-      x: start.x + ((end.x - start.x) * progress),
+      x: start.x + (end.x - start.x) * progress,
       y: start.y + ((end.y || start.y || 0) - (start.y || 0)) * progress,
-      z: start.z + ((end.z - start.z) * progress),
+      z: start.z + (end.z - start.z) * progress,
     };
 
-    if (!isPointWithinWorldBounds(worldState, samplePoint, 0.05) || isPositionBlocked(worldState, samplePoint, padding)) {
+    if (
+      !isPointWithinWorldBounds(worldState, samplePoint, 0.05) ||
+      isPositionBlocked(worldState, samplePoint, padding)
+    ) {
       return false;
     }
   }
@@ -441,7 +458,12 @@ function compressAiRoute(worldState, start, routePoints, padding = PLAYER_COLLIS
 }
 
 function computeAiRoute(worldState, start, target, padding = PLAYER_COLLISION_RADIUS) {
-  if (!start || !target || !isPointWithinWorldBounds(worldState, start, 0.05) || !isRoutePointWalkable(worldState, target, padding)) {
+  if (
+    !start ||
+    !target ||
+    !isPointWithinWorldBounds(worldState, start, 0.05) ||
+    !isRoutePointWalkable(worldState, target, padding)
+  ) {
     return [];
   }
 
@@ -454,7 +476,9 @@ function computeAiRoute(worldState, start, target, padding = PLAYER_COLLISION_RA
     return [];
   }
 
-  const targetIndex = nodes.findIndex((node) => buildRoutePointKey(node) === buildRoutePointKey(target));
+  const targetIndex = nodes.findIndex(
+    (node) => buildRoutePointKey(node) === buildRoutePointKey(target)
+  );
   if (targetIndex <= 0) {
     return [];
   }
@@ -517,7 +541,10 @@ function computeAiRoute(worldState, start, target, padding = PLAYER_COLLISION_RA
 
       cameFrom.set(neighbor.index, currentIndex);
       gScore.set(neighbor.index, tentativeScore);
-      fScore.set(neighbor.index, tentativeScore + distanceBetween(nodes[neighbor.index], nodes[targetIndex]));
+      fScore.set(
+        neighbor.index,
+        tentativeScore + distanceBetween(nodes[neighbor.index], nodes[targetIndex])
+      );
       openSet.add(neighbor.index);
     });
   }
@@ -536,7 +563,10 @@ function getNearbyTowerElevator(worldState, position, maxDistance = TOWER_ELEVAT
     const isNearLiftPlatform = planarDistance <= maxDistance;
     const isNearCallButton = buttonDistance <= TOWER_ELEVATOR_BUTTON_ACTION_RADIUS;
 
-    if (Math.abs(actorY - elevator.bottomY) <= TOWER_ELEVATOR_VERTICAL_TOLERANCE && (isNearLiftPlatform || isNearCallButton)) {
+    if (
+      Math.abs(actorY - elevator.bottomY) <= TOWER_ELEVATOR_VERTICAL_TOLERANCE &&
+      (isNearLiftPlatform || isNearCallButton)
+    ) {
       return {
         id: elevator.id,
         direction: 'up',
@@ -549,7 +579,10 @@ function getNearbyTowerElevator(worldState, position, maxDistance = TOWER_ELEVAT
       };
     }
 
-    if (Math.abs(actorY - elevator.topY) <= TOWER_ELEVATOR_VERTICAL_TOLERANCE && isNearLiftPlatform) {
+    if (
+      Math.abs(actorY - elevator.topY) <= TOWER_ELEVATOR_VERTICAL_TOLERANCE &&
+      isNearLiftPlatform
+    ) {
       return {
         id: elevator.id,
         direction: 'down',
@@ -575,7 +608,7 @@ function getClosestPointOnSegment(start, end, target) {
   const targetZ = Number(target?.z) || 0;
   const segmentDeltaX = endX - startX;
   const segmentDeltaZ = endZ - startZ;
-  const segmentLengthSquared = (segmentDeltaX * segmentDeltaX) + (segmentDeltaZ * segmentDeltaZ);
+  const segmentLengthSquared = segmentDeltaX * segmentDeltaX + segmentDeltaZ * segmentDeltaZ;
 
   if (segmentLengthSquared <= 0.000001) {
     return {
@@ -585,15 +618,14 @@ function getClosestPointOnSegment(start, end, target) {
     };
   }
 
-  const projectedProgress = (
-    ((targetX - startX) * segmentDeltaX)
-    + ((targetZ - startZ) * segmentDeltaZ)
-  ) / segmentLengthSquared;
+  const projectedProgress =
+    ((targetX - startX) * segmentDeltaX + (targetZ - startZ) * segmentDeltaZ) /
+    segmentLengthSquared;
   const progress = clamp(projectedProgress, 0, 1);
 
   return {
-    x: startX + (segmentDeltaX * progress),
-    z: startZ + (segmentDeltaZ * progress),
+    x: startX + segmentDeltaX * progress,
+    z: startZ + segmentDeltaZ * progress,
     progress,
   };
 }
@@ -646,7 +678,7 @@ function getSoccerGoalSideFromSegment(startPosition, endPosition, metrics) {
 
   if (endZ < metrics.zMin && startZ >= metrics.zMin && Math.abs(endZ - startZ) > 0.000001) {
     const progress = (metrics.zMin - startZ) / (endZ - startZ);
-    const crossingX = startX + ((endX - startX) * progress);
+    const crossingX = startX + (endX - startX) * progress;
     if (crossingX >= metrics.goalXMin && crossingX <= metrics.goalXMax) {
       return 'north';
     }
@@ -654,7 +686,7 @@ function getSoccerGoalSideFromSegment(startPosition, endPosition, metrics) {
 
   if (endZ > metrics.zMax && startZ <= metrics.zMax && Math.abs(endZ - startZ) > 0.000001) {
     const progress = (metrics.zMax - startZ) / (endZ - startZ);
-    const crossingX = startX + ((endX - startX) * progress);
+    const crossingX = startX + (endX - startX) * progress;
     if (crossingX >= metrics.goalXMin && crossingX <= metrics.goalXMax) {
       return 'south';
     }
@@ -692,9 +724,9 @@ function normalizeDecision(decision, observation) {
   }
 
   if (
-    action !== 'wait'
-    && action !== 'move_to'
-    && observation?.available_actions?.[action] !== true
+    action !== 'wait' &&
+    action !== 'move_to' &&
+    observation?.available_actions?.[action] !== true
   ) {
     return null;
   }
@@ -750,7 +782,10 @@ function chooseFallbackDecision(observation) {
     excludeTargetIds: [observation.current_target_id],
   });
 
-  if (observation.available_actions.drink_water && observation.self.water <= SCORE_HEALTHY_THRESHOLD + 2) {
+  if (
+    observation.available_actions.drink_water &&
+    observation.self.water <= SCORE_HEALTHY_THRESHOLD + 2
+  ) {
     return {
       action: 'drink_water',
       targetId: null,
@@ -766,7 +801,10 @@ function chooseFallbackDecision(observation) {
     };
   }
 
-  if (observation.available_actions.eat_fruit && observation.self.food <= SCORE_HEALTHY_THRESHOLD + 2) {
+  if (
+    observation.available_actions.eat_fruit &&
+    observation.self.food <= SCORE_HEALTHY_THRESHOLD + 2
+  ) {
     return {
       action: 'eat_fruit',
       targetId: null,
@@ -774,7 +812,11 @@ function chooseFallbackDecision(observation) {
     };
   }
 
-  if (observation.self.food < 55 && observation.self.apples === 0 && explorationTarget?.type === 'tree') {
+  if (
+    observation.self.food < 55 &&
+    observation.self.apples === 0 &&
+    explorationTarget?.type === 'tree'
+  ) {
     return {
       action: 'move_to',
       targetId: explorationTarget.id,
@@ -790,7 +832,11 @@ function chooseFallbackDecision(observation) {
     };
   }
 
-  if (observation.self.apples > 0 && observation.available_actions.eat_fruit && observation.self.food < 88) {
+  if (
+    observation.self.apples > 0 &&
+    observation.available_actions.eat_fruit &&
+    observation.self.food < 88
+  ) {
     return {
       action: 'eat_fruit',
       targetId: null,
@@ -802,7 +848,8 @@ function chooseFallbackDecision(observation) {
     return {
       action: 'move_to',
       targetId: explorationTarget.id,
-      speech: observation.self.apples === 0 ? 'Vou explorar outra arvore.' : 'Vou andar mais um pouco.',
+      speech:
+        observation.self.apples === 0 ? 'Vou explorar outra arvore.' : 'Vou andar mais um pouco.',
     };
   }
 
@@ -817,7 +864,10 @@ function chooseFallbackDecision(observation) {
   return {
     action: 'wait',
     targetId: null,
-    speech: observation.self.water < 50 || observation.self.food < 50 ? 'Pensando no proximo passo.' : null,
+    speech:
+      observation.self.water < 50 || observation.self.food < 50
+        ? 'Pensando no proximo passo.'
+        : null,
   };
 }
 
@@ -847,7 +897,9 @@ function chooseExplorationTarget(observation, { excludeTargetIds = [] } = {}) {
     .filter((target) => target.type === 'tree' && !excludedTargetIds.has(target.id))
     .sort((left, right) => {
       const leftRecentRank = recentMoveTargets.has(left.id) ? recentMoveTargets.get(left.id) : -1;
-      const rightRecentRank = recentMoveTargets.has(right.id) ? recentMoveTargets.get(right.id) : -1;
+      const rightRecentRank = recentMoveTargets.has(right.id)
+        ? recentMoveTargets.get(right.id)
+        : -1;
 
       if (leftRecentRank !== rightRecentRank) {
         return leftRecentRank - rightRecentRank;
@@ -894,9 +946,10 @@ function createPlayerState(user, spawnPoint) {
   return {
     id: user.id,
     actorType: 'player',
-    name: nickname && !areNamesEquivalent(nickname, realName)
-      ? nickname
-      : buildDefaultPlayerNickname(user.id),
+    name:
+      nickname && !areNamesEquivalent(nickname, realName)
+        ? nickname
+        : buildDefaultPlayerNickname(user.id),
     realName,
     appearance: buildPlayerAppearance(user.appearance),
     position: clonePoint(spawnPoint),
@@ -937,7 +990,8 @@ function createPlayerState(user, spawnPoint) {
 
 function createAgentActorState(agentRecord, spawnPoint) {
   const now = Date.now();
-  const displayName = sanitizeNickname(agentRecord?.name) || `Agente ${1000 + (hashString(agentRecord?.id) % 9000)}`;
+  const displayName =
+    sanitizeNickname(agentRecord?.name) || `Agente ${1000 + (hashString(agentRecord?.id) % 9000)}`;
   return {
     id: agentRecord.id,
     actorType: 'agent',
@@ -1286,10 +1340,13 @@ class AiGameEngine {
       self: player ? this.buildSelfState(player, now) : null,
       players: [
         ...Array.from(this.state.players.values()).map((c) => this.buildPublicPlayerState(c, now)),
-        ...Array.from(this.state.userAgents.values()).map((c) => this.buildPublicAgentState(c, now)),
+        ...Array.from(this.state.userAgents.values()).map((c) =>
+          this.buildPublicAgentState(c, now)
+        ),
       ].sort((left, right) => left.name.localeCompare(right.name, 'pt-BR')),
-      agents: Array.from(this.state.userAgents.values())
-        .map((c) => this.buildPublicAgentState(c, now)),
+      agents: Array.from(this.state.userAgents.values()).map((c) =>
+        this.buildPublicAgentState(c, now)
+      ),
       ai: this.buildAiPublicState(now),
       world: getPublicDynamicWorldState(this.state.world),
       leaderboard: {
@@ -1380,12 +1437,14 @@ class AiGameEngine {
 
   setRealmLeaseSnapshot(snapshot = null, { evacuateOnLoss = true } = {}) {
     const previousLeader = Boolean(this.realmLeaseSnapshot?.isLeader);
-    const localInstanceId = this.realmLeaseSnapshot?.localInstanceId || buildLocalRuntimeInstanceId();
+    const localInstanceId =
+      this.realmLeaseSnapshot?.localInstanceId || buildLocalRuntimeInstanceId();
     const normalized = {
       realmId: snapshot?.realmId || config.REALM_ID,
       required: config.AGENT_WORLD_REQUIRE_LEASE,
       localInstanceId,
-      ownerInstanceId: snapshot?.ownerInstanceId || (config.AGENT_WORLD_REQUIRE_LEASE ? null : localInstanceId),
+      ownerInstanceId:
+        snapshot?.ownerInstanceId || (config.AGENT_WORLD_REQUIRE_LEASE ? null : localInstanceId),
       isLeader: config.AGENT_WORLD_REQUIRE_LEASE ? Boolean(snapshot?.isLeader) : true,
       expiresAt: snapshot?.expiresAt || null,
       lastHeartbeatAt: snapshot?.checkedAt || snapshot?.lastHeartbeatAt || new Date().toISOString(),
@@ -1432,7 +1491,9 @@ class AiGameEngine {
       provider: this.state.ai.provider,
       movementTargetId: this.state.ai.movementTargetId,
       inventory: buildInventory(this.state.ai),
-      lastDecisionAt: this.state.lastDecisionAt ? new Date(this.state.lastDecisionAt).toISOString() : null,
+      lastDecisionAt: this.state.lastDecisionAt
+        ? new Date(this.state.lastDecisionAt).toISOString()
+        : null,
     };
   }
 
@@ -1496,7 +1557,9 @@ class AiGameEngine {
   }
 
   pickSpawnPoint() {
-    const occupiedPositions = Array.from(this.state.players.values()).map((player) => player.position);
+    const occupiedPositions = Array.from(this.state.players.values()).map(
+      (player) => player.position
+    );
 
     if (occupiedPositions.length === 0) {
       return clonePoint(PLAYER_SPAWN_POINTS[0]);
@@ -1559,14 +1622,17 @@ class AiGameEngine {
       let player = this.state.players.get(userId);
 
       if (!player) {
-        player = createPlayerState({
-          id: userId,
-          realName: userName,
-          nickname: persistedProfile?.actorName || null,
-          appearance: {
-            outfitColor: persistedProfile?.outfitColor || null,
+        player = createPlayerState(
+          {
+            id: userId,
+            realName: userName,
+            nickname: persistedProfile?.actorName || null,
+            appearance: {
+              outfitColor: persistedProfile?.outfitColor || null,
+            },
           },
-        }, this.pickSpawnPoint());
+          this.pickSpawnPoint()
+        );
         this.state.players.set(userId, player);
         this.persistActorStats(player);
         this.logEvent('player_joined', buildPlayerLogContext(player));
@@ -1667,19 +1733,20 @@ class AiGameEngine {
     }
 
     const availableActions = this.getAvailableActions(player, now);
-    const selectedAction = availableActions.elevator_up || availableActions.elevator_down
-      ? 'ride_elevator'
-      : availableActions.attack_sword
-        ? 'attack_sword'
-      : availableActions.shoot_arrow
-        ? 'shoot_arrow'
-      : availableActions.kick_ball
-        ? 'kick_ball'
-        : availableActions.drink_water
-        ? 'drink_water'
-        : availableActions.eat_fruit
-          ? 'eat_fruit'
-          : null;
+    const selectedAction =
+      availableActions.elevator_up || availableActions.elevator_down
+        ? 'ride_elevator'
+        : availableActions.attack_sword
+          ? 'attack_sword'
+          : availableActions.shoot_arrow
+            ? 'shoot_arrow'
+            : availableActions.kick_ball
+              ? 'kick_ball'
+              : availableActions.drink_water
+                ? 'drink_water'
+                : availableActions.eat_fruit
+                  ? 'eat_fruit'
+                  : null;
 
     if (!selectedAction) {
       return {
@@ -1736,16 +1803,16 @@ class AiGameEngine {
     const selectedAction = availableActions.drop_sword
       ? 'drop_sword'
       : availableActions.drop_bow
-      ? 'drop_bow'
-      : availableActions.drop_fruit
-      ? 'drop_fruit'
-      : availableActions.pick_sword
-        ? 'pick_sword'
-      : availableActions.pick_bow
-        ? 'pick_bow'
-      : availableActions.pick_fruit
-        ? 'pick_fruit'
-        : null;
+        ? 'drop_bow'
+        : availableActions.drop_fruit
+          ? 'drop_fruit'
+          : availableActions.pick_sword
+            ? 'pick_sword'
+            : availableActions.pick_bow
+              ? 'pick_bow'
+              : availableActions.pick_fruit
+                ? 'pick_fruit'
+                : null;
 
     if (!selectedAction) {
       return {
@@ -1790,9 +1857,12 @@ class AiGameEngine {
 
     const blockedWord = findBlockedChatWord(sanitizedMessage);
     if (blockedWord) {
-      this.logEvent('player_chat_blocked', buildPlayerLogContext(player, {
-        details: `reason=${formatLogDetailValue(`blocked_word:${blockedWord}`)}`,
-      }));
+      this.logEvent(
+        'player_chat_blocked',
+        buildPlayerLogContext(player, {
+          details: `reason=${formatLogDetailValue(`blocked_word:${blockedWord}`)}`,
+        })
+      );
 
       return {
         ok: false,
@@ -1828,7 +1898,7 @@ class AiGameEngine {
 
     let directionX = ballPosition.x - actor.position.x;
     let directionZ = ballPosition.z - actor.position.z;
-    const directionMagnitude = Math.sqrt((directionX * directionX) + (directionZ * directionZ));
+    const directionMagnitude = Math.sqrt(directionX * directionX + directionZ * directionZ);
 
     if (directionMagnitude > 0.001) {
       directionX /= directionMagnitude;
@@ -1911,7 +1981,8 @@ class AiGameEngine {
 
     const previousNickname = player.name;
     const previousOutfitColor = player.appearance?.outfitColor || null;
-    const hasChanged = previousNickname !== nextNickname || previousOutfitColor !== nextAppearance.outfitColor;
+    const hasChanged =
+      previousNickname !== nextNickname || previousOutfitColor !== nextAppearance.outfitColor;
 
     player.name = nextNickname;
     player.appearance = nextAppearance;
@@ -1927,9 +1998,12 @@ class AiGameEngine {
         detailParts.push(`previous_outfit_color=${formatLogDetailValue(previousOutfitColor)}`);
       }
 
-      this.logEvent('player_profile_updated', buildPlayerLogContext(player, {
-        details: detailParts.join('; '),
-      }));
+      this.logEvent(
+        'player_profile_updated',
+        buildPlayerLogContext(player, {
+          details: detailParts.join('; '),
+        })
+      );
     }
 
     return {
@@ -2026,7 +2100,11 @@ class AiGameEngine {
             if (Math.abs(actor.position.y - targetY) < 1.0) {
               actor.position.y = Math.max(0, actor.position.y + diffY);
               // Also sync their walkable position just in case
-              const resolved = resolveWalkablePosition(this.state.world, actor.position, actor.position);
+              const resolved = resolveWalkablePosition(
+                this.state.world,
+                actor.position,
+                actor.position
+              );
               actor.position.y = resolved.y;
             }
           }
@@ -2051,12 +2129,12 @@ class AiGameEngine {
     }
 
     actor.inventory.food = clamp(
-      actor.inventory.food - (FOOD_DECAY_PER_SECOND * deltaSeconds),
+      actor.inventory.food - FOOD_DECAY_PER_SECOND * deltaSeconds,
       0,
       MAX_FOOD
     );
     actor.inventory.water = clamp(
-      actor.inventory.water - (WATER_DECAY_PER_SECOND * deltaSeconds),
+      actor.inventory.water - WATER_DECAY_PER_SECOND * deltaSeconds,
       0,
       MAX_WATER
     );
@@ -2143,9 +2221,12 @@ class AiGameEngine {
         details: `reason=${reason}; x=${roundNumber(actor.position.x, 2)}; z=${roundNumber(actor.position.z, 2)}`,
       });
     } else {
-      this.logEvent('player_died', buildPlayerLogContext(actor, {
-        details: `reason=${formatLogDetailValue(reason)}; x=${roundNumber(actor.position.x, 2)}; z=${roundNumber(actor.position.z, 2)}`,
-      }));
+      this.logEvent(
+        'player_died',
+        buildPlayerLogContext(actor, {
+          details: `reason=${formatLogDetailValue(reason)}; x=${roundNumber(actor.position.x, 2)}; z=${roundNumber(actor.position.z, 2)}`,
+        })
+      );
     }
     this.persistActorStats(actor);
   }
@@ -2155,9 +2236,8 @@ class AiGameEngine {
       return false;
     }
 
-    const spawnPoint = actor.actorType === 'ai'
-      ? clonePoint(AI_SPAWN_POINT)
-      : this.pickSpawnPoint();
+    const spawnPoint =
+      actor.actorType === 'ai' ? clonePoint(AI_SPAWN_POINT) : this.pickSpawnPoint();
 
     actor.position.x = spawnPoint.x;
     actor.position.y = spawnPoint.y;
@@ -2202,9 +2282,12 @@ class AiGameEngine {
         details: `x=${roundNumber(actor.position.x, 2)}; z=${roundNumber(actor.position.z, 2)}`,
       });
     } else {
-      this.logEvent('player_respawned', buildPlayerLogContext(actor, {
-        details: `x=${roundNumber(actor.position.x, 2)}; z=${roundNumber(actor.position.z, 2)}`,
-      }));
+      this.logEvent(
+        'player_respawned',
+        buildPlayerLogContext(actor, {
+          details: `x=${roundNumber(actor.position.x, 2)}; z=${roundNumber(actor.position.z, 2)}`,
+        })
+      );
     }
     return true;
   }
@@ -2223,7 +2306,7 @@ class AiGameEngine {
     const moveX = Number(player.input.moveX) || 0;
     const moveZ = Number(player.input.moveZ) || 0;
     const isRunning = Boolean(player.input.isRunning);
-    const magnitude = Math.sqrt((moveX * moveX) + (moveZ * moveZ));
+    const magnitude = Math.sqrt(moveX * moveX + moveZ * moveZ);
 
     if (magnitude > 0.001) {
       const previousPosition = {
@@ -2243,9 +2326,9 @@ class AiGameEngine {
         this.state.world,
         player.position,
         {
-          x: player.position.x + (directionX * step),
+          x: player.position.x + directionX * step,
           y: player.position.y,
-          z: player.position.z + (directionZ * step),
+          z: player.position.z + directionZ * step,
         },
         PLAYER_COLLISION_RADIUS
       );
@@ -2270,7 +2353,11 @@ class AiGameEngine {
     player.status = 'idle';
     if (player.currentAction === 'move') {
       player.currentAction = 'wait';
-    } else if (player.currentAction !== 'drink_water' && player.currentAction !== 'pick_fruit' && player.currentAction !== 'eat_fruit') {
+    } else if (
+      player.currentAction !== 'drink_water' &&
+      player.currentAction !== 'pick_fruit' &&
+      player.currentAction !== 'eat_fruit'
+    ) {
       player.currentAction = 'wait';
     } else if (player.actionCooldownUntil <= now) {
       player.currentAction = 'wait';
@@ -2279,7 +2366,7 @@ class AiGameEngine {
 
   cleanupInactivePlayers(now) {
     for (const [playerId, player] of this.state.players.entries()) {
-      if ((now - player.lastSeenAt) > config.PLAYER_IDLE_TIMEOUT_MS) {
+      if (now - player.lastSeenAt > config.PLAYER_IDLE_TIMEOUT_MS) {
         this.disconnectPlayer(playerId, 'timeout');
       }
     }
@@ -2390,9 +2477,9 @@ class AiGameEngine {
     }
 
     if (
-      !Array.isArray(this.state.ai.movementRoute)
-      || this.state.ai.movementRoute.length === 0
-      || this.state.ai.movementRouteIndex >= this.state.ai.movementRoute.length
+      !Array.isArray(this.state.ai.movementRoute) ||
+      this.state.ai.movementRoute.length === 0 ||
+      this.state.ai.movementRouteIndex >= this.state.ai.movementRoute.length
     ) {
       const planned = this.planAiRoute(target, { resetReplanCount: false });
       if (!planned) {
@@ -2416,7 +2503,8 @@ class AiGameEngine {
       this.state.ai.movementRouteIndex += 1;
     }
 
-    const movementGoal = this.state.ai.movementRoute[this.state.ai.movementRouteIndex] || target.position;
+    const movementGoal =
+      this.state.ai.movementRoute[this.state.ai.movementRouteIndex] || target.position;
     const goalDistance = distanceBetween(this.state.ai.position, movementGoal);
     if (goalDistance <= 0.0001) {
       this.state.ai.movementRouteIndex += 1;
@@ -2431,9 +2519,9 @@ class AiGameEngine {
       this.state.world,
       this.state.ai.position,
       {
-        x: this.state.ai.position.x + (directionX * step),
+        x: this.state.ai.position.x + directionX * step,
         y: this.state.ai.position.y,
-        z: this.state.ai.position.z + (directionZ * step),
+        z: this.state.ai.position.z + directionZ * step,
       },
       PLAYER_COLLISION_RADIUS
     );
@@ -2467,9 +2555,9 @@ class AiGameEngine {
     }
 
     const actionRequiresCooldownCompletion =
-      this.state.ai.currentAction === 'drink_water'
-      || this.state.ai.currentAction === 'pick_fruit'
-      || this.state.ai.currentAction === 'eat_fruit';
+      this.state.ai.currentAction === 'drink_water' ||
+      this.state.ai.currentAction === 'pick_fruit' ||
+      this.state.ai.currentAction === 'eat_fruit';
 
     return actionRequiresCooldownCompletion && now < this.state.ai.actionCooldownUntil;
   }
@@ -2481,7 +2569,10 @@ class AiGameEngine {
 
     const now = Date.now();
     if (this.state.ai.status === 'dead') {
-      this.state.nextDecisionAt = Math.max(this.state.nextDecisionAt, this.state.ai.respawnAt || (now + 500));
+      this.state.nextDecisionAt = Math.max(
+        this.state.nextDecisionAt,
+        this.state.ai.respawnAt || now + 500
+      );
       return;
     }
 
@@ -2541,7 +2632,9 @@ class AiGameEngine {
     try {
       const allAgents = this.agentRepository.listRunnableAgents
         ? await this.agentRepository.listRunnableAgents(config.AGENT_WORLD_MAX_ACTIVE)
-        : (this.agentRepository.listAllActiveAgents ? await this.agentRepository.listAllActiveAgents() : []);
+        : this.agentRepository.listAllActiveAgents
+          ? await this.agentRepository.listAllActiveAgents()
+          : [];
 
       const activeAgentIds = new Set(allAgents.map((a) => a.id));
 
@@ -2595,7 +2688,10 @@ class AiGameEngine {
     }
 
     const now = Date.now();
-    const maxConcurrentDecisions = Math.max(1, Number(config.AGENT_WORLD_CONCURRENT_DECISIONS) || 2);
+    const maxConcurrentDecisions = Math.max(
+      1,
+      Number(config.AGENT_WORLD_CONCURRENT_DECISIONS) || 2
+    );
 
     for (const agent of this.state.userAgents.values()) {
       if (this.pendingAgentDecisions.size >= maxConcurrentDecisions) {
@@ -2603,7 +2699,7 @@ class AiGameEngine {
       }
 
       if (agent.status === 'dead') {
-        agent.nextDecisionAt = Math.max(agent.nextDecisionAt, agent.respawnAt || (now + 500));
+        agent.nextDecisionAt = Math.max(agent.nextDecisionAt, agent.respawnAt || now + 500);
         continue;
       }
 
@@ -2622,44 +2718,55 @@ class AiGameEngine {
 
       // Skip if agent is in cooldown
       const actionRequiresCooldown =
-        agent.currentAction === 'drink_water'
-        || agent.currentAction === 'pick_fruit'
-        || agent.currentAction === 'eat_fruit';
+        agent.currentAction === 'drink_water' ||
+        agent.currentAction === 'pick_fruit' ||
+        agent.currentAction === 'eat_fruit';
       if (actionRequiresCooldown && now < agent.actionCooldownUntil) {
         continue;
       }
 
       this.pendingAgentDecisions.add(agent.id);
 
-      this.agentDecisionService.decideForAgent({
-        agentId: agent.id,
-        observation: this.buildAgentObservation(agent),
-        fallbackDecisionFactory: () => chooseFallbackDecision(this.buildAgentObservation(agent)),
-      }).then((result) => {
-        const decision = normalizeDecision(result, this.buildAgentObservation(agent));
-        const finalDecision = decision || chooseFallbackDecision(this.buildAgentObservation(agent));
-        this.applyAgentDecision(agent, finalDecision, result?.meta?.provider || 'agent');
-      }).catch((error) => {
-        this.logger.error(`Agent ${agent.id} decision failed:`, error.message);
-        const fallbackObs = this.buildAgentObservation(agent);
-        const fallback = chooseFallbackDecision(fallbackObs);
-        this.applyAgentDecision(agent, fallback, 'fallback');
-        agent.lastError = error.message;
-      }).finally(() => {
-        this.pendingAgentDecisions.delete(agent.id);
-      });
+      this.agentDecisionService
+        .decideForAgent({
+          agentId: agent.id,
+          observation: this.buildAgentObservation(agent),
+          fallbackDecisionFactory: () => chooseFallbackDecision(this.buildAgentObservation(agent)),
+        })
+        .then((result) => {
+          const decision = normalizeDecision(result, this.buildAgentObservation(agent));
+          const finalDecision =
+            decision || chooseFallbackDecision(this.buildAgentObservation(agent));
+          this.applyAgentDecision(agent, finalDecision, result?.meta?.provider || 'agent');
+        })
+        .catch((error) => {
+          this.logger.error(`Agent ${agent.id} decision failed:`, error.message);
+          const fallbackObs = this.buildAgentObservation(agent);
+          const fallback = chooseFallbackDecision(fallbackObs);
+          this.applyAgentDecision(agent, fallback, 'fallback');
+          agent.lastError = error.message;
+        })
+        .finally(() => {
+          this.pendingAgentDecisions.delete(agent.id);
+        });
     }
   }
 
   applyAgentDecision(agent, decision, source) {
     const now = Date.now();
-    const decisionIntervalMs = Math.max(500, Number(config.AGENT_WORLD_DECISION_INTERVAL_MS) || config.AI_DECISION_INTERVAL_MS);
+    const decisionIntervalMs = Math.max(
+      500,
+      Number(config.AGENT_WORLD_DECISION_INTERVAL_MS) || config.AI_DECISION_INTERVAL_MS
+    );
     agent.lastDecisionAt = now;
     agent.lastDecisionSource = source;
     agent.nextDecisionAt = now + decisionIntervalMs;
 
     if (agent.status === 'dead') {
-      agent.nextDecisionAt = Math.max(agent.nextDecisionAt, agent.respawnAt || (now + decisionIntervalMs));
+      agent.nextDecisionAt = Math.max(
+        agent.nextDecisionAt,
+        agent.respawnAt || now + decisionIntervalMs
+      );
       return;
     }
 
@@ -2687,7 +2794,7 @@ class AiGameEngine {
           this.state.world,
           agent.position,
           target.position,
-          PLAYER_COLLISION_RADIUS,
+          PLAYER_COLLISION_RADIUS
         );
         if (route.length === 0) {
           agent.status = 'idle';
@@ -2711,21 +2818,30 @@ class AiGameEngine {
       }
       case 'drink_water':
         this.performDrink(agent, 'agent_drink_water', {
-          userId: agent.id, userName: agent.name, userAgent: 'backend-agent', details: `agent_id=${agent.id}`,
+          userId: agent.id,
+          userName: agent.name,
+          userAgent: 'backend-agent',
+          details: `agent_id=${agent.id}`,
         });
         agent.recentActions.push(createActionMemoryEntry('drink_water'));
         if (agent.recentActions.length > AI_ACTION_MEMORY_SIZE) agent.recentActions.shift();
         break;
       case 'pick_fruit':
         this.performPickFruit(agent, 'agent_pick_fruit', {
-          userId: agent.id, userName: agent.name, userAgent: 'backend-agent', details: `agent_id=${agent.id}`,
+          userId: agent.id,
+          userName: agent.name,
+          userAgent: 'backend-agent',
+          details: `agent_id=${agent.id}`,
         });
         agent.recentActions.push(createActionMemoryEntry('pick_fruit'));
         if (agent.recentActions.length > AI_ACTION_MEMORY_SIZE) agent.recentActions.shift();
         break;
       case 'eat_fruit':
         this.performEatFruit(agent, 'agent_eat_fruit', {
-          userId: agent.id, userName: agent.name, userAgent: 'backend-agent', details: `agent_id=${agent.id}`,
+          userId: agent.id,
+          userName: agent.name,
+          userAgent: 'backend-agent',
+          details: `agent_id=${agent.id}`,
         });
         agent.recentActions.push(createActionMemoryEntry('eat_fruit'));
         if (agent.recentActions.length > AI_ACTION_MEMORY_SIZE) agent.recentActions.shift();
@@ -2851,7 +2967,10 @@ class AiGameEngine {
       {
         id: LAKE.id,
         type: 'lake',
-        distance: roundNumber(distanceBetween(this.state.ai.position, this.state.world.lake.position), 1),
+        distance: roundNumber(
+          distanceBetween(this.state.ai.position, this.state.world.lake.position),
+          1
+        ),
         applesRemaining: null,
       },
       ...this.state.world.trees
@@ -2892,10 +3011,11 @@ class AiGameEngine {
     };
   }
 
-  applyDecision(decision, source, {
-    clearLastError = true,
-    nextDecisionDelayMs = config.AI_DECISION_INTERVAL_MS,
-  } = {}) {
+  applyDecision(
+    decision,
+    source,
+    { clearLastError = true, nextDecisionDelayMs = config.AI_DECISION_INTERVAL_MS } = {}
+  ) {
     const now = Date.now();
     const effectiveDelayMs = Number.isFinite(nextDecisionDelayMs)
       ? nextDecisionDelayMs
@@ -2907,7 +3027,10 @@ class AiGameEngine {
     this.state.nextDecisionAt = now + effectiveDelayMs;
 
     if (this.state.ai.status === 'dead') {
-      this.state.nextDecisionAt = Math.max(this.state.nextDecisionAt, this.state.ai.respawnAt || (now + effectiveDelayMs));
+      this.state.nextDecisionAt = Math.max(
+        this.state.nextDecisionAt,
+        this.state.ai.respawnAt || now + effectiveDelayMs
+      );
       return;
     }
 
@@ -2950,25 +3073,40 @@ class AiGameEngine {
         return;
       }
       case 'drink_water':
-        this.performDrink(this.state.ai, 'ai_drink_water', {
-          userId: this.state.ai.id,
-          userName: this.state.ai.name,
-          userAgent: 'backend-ai',
-        }, { clearMovement: true });
+        this.performDrink(
+          this.state.ai,
+          'ai_drink_water',
+          {
+            userId: this.state.ai.id,
+            userName: this.state.ai.name,
+            userAgent: 'backend-ai',
+          },
+          { clearMovement: true }
+        );
         return;
       case 'pick_fruit':
-        this.performPickFruit(this.state.ai, 'ai_pick_fruit', {
-          userId: this.state.ai.id,
-          userName: this.state.ai.name,
-          userAgent: 'backend-ai',
-        }, { clearMovement: true });
+        this.performPickFruit(
+          this.state.ai,
+          'ai_pick_fruit',
+          {
+            userId: this.state.ai.id,
+            userName: this.state.ai.name,
+            userAgent: 'backend-ai',
+          },
+          { clearMovement: true }
+        );
         return;
       case 'eat_fruit':
-        this.performEatFruit(this.state.ai, 'ai_eat_fruit', {
-          userId: this.state.ai.id,
-          userName: this.state.ai.name,
-          userAgent: 'backend-ai',
-        }, { clearMovement: true });
+        this.performEatFruit(
+          this.state.ai,
+          'ai_eat_fruit',
+          {
+            userId: this.state.ai.id,
+            userName: this.state.ai.name,
+            userAgent: 'backend-ai',
+          },
+          { clearMovement: true }
+        );
         return;
       default:
         this.state.ai.status = 'idle';
@@ -2983,7 +3121,13 @@ class AiGameEngine {
   }
 
   performTowerElevatorRide(actor, eventName, logContext, options = {}) {
-    return this.systems.inventory.performTowerElevatorRide(this, actor, eventName, logContext, options);
+    return this.systems.inventory.performTowerElevatorRide(
+      this,
+      actor,
+      eventName,
+      logContext,
+      options
+    );
   }
 
   getNearbyBowPickup(position, maxDistance = BOW_PICKUP_RADIUS) {
@@ -3123,7 +3267,12 @@ class AiGameEngine {
   }
 
   maybeRegisterSoccerGoalFromCarrierMovement(actor, previousPosition, now) {
-    return this.systems.physics.maybeRegisterSoccerGoalFromCarrierMovement(this, actor, previousPosition, now);
+    return this.systems.physics.maybeRegisterSoccerGoalFromCarrierMovement(
+      this,
+      actor,
+      previousPosition,
+      now
+    );
   }
 
   tryMagnetizeSoccerBallToNearbyPlayer() {
@@ -3148,21 +3297,24 @@ class AiGameEngine {
       return;
     }
 
-    const actor = normalizedActorId === this.state.ai.id
-      ? this.state.ai
-      : this.state.players.get(normalizedActorId);
+    const actor =
+      normalizedActorId === this.state.ai.id
+        ? this.state.ai
+        : this.state.players.get(normalizedActorId);
 
     incrementGameActorSoccerGoals({
       actorId: normalizedActorId,
       actorType: actor?.actorType || (normalizedActorId === this.state.ai.id ? 'ai' : 'player'),
       actorName: actor?.name || sanitizeText(fallbackActorName, 255) || 'Jogador',
       outfitColor: actor?.actorType === 'player' ? actor.appearance?.outfitColor || null : null,
-    }).then(() => {
-      this.state.soccerLeaderboardLastUpdatedAt = 0;
-      return this.refreshSoccerLeaderboard();
-    }).catch((error) => {
-      this.logger.error('Soccer goal persist failed:', error.message);
-    });
+    })
+      .then(() => {
+        this.state.soccerLeaderboardLastUpdatedAt = 0;
+        return this.refreshSoccerLeaderboard();
+      })
+      .catch((error) => {
+        this.logger.error('Soccer goal persist failed:', error.message);
+      });
   }
 
   registerSoccerGoal(side, now) {
@@ -3255,12 +3407,10 @@ class AiGameEngine {
     }
   }
 
-  logEvent(event, {
-    userId = null,
-    userName = null,
-    userAgent = 'backend-ai',
-    details = null,
-  } = {}) {
+  logEvent(
+    event,
+    { userId = null, userName = null, userAgent = 'backend-ai', details = null } = {}
+  ) {
     insertLog({
       event,
       userAgent,
