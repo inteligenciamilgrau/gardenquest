@@ -17,7 +17,10 @@ const worldRuntimeRepository = require('./database/world-runtime');
 const { RealmLeaseService } = require('./services/realm/RealmLeaseService');
 const { WorldRuntimeGateway } = require('./services/world/WorldRuntimeGateway');
 const { AiGameEngine } = require('./games/garden-quest/engine');
-const { createRuntimeSecretVault, initializeRuntimeDatabase } = require('./bootstrap/runtime-bootstrap');
+const {
+  createRuntimeSecretVault,
+  initializeRuntimeDatabase,
+} = require('./bootstrap/runtime-bootstrap');
 
 const app = express();
 
@@ -64,28 +67,35 @@ app.use(requestContext);
 
 // Server-side Heartbeat to confirm process is alive
 if (config.NODE_ENV === 'development' || config.APP_ENV === 'local') {
-    serverHeartbeatHandle = setInterval(() => {
-        console.log(`[SERVER-HEARTBEAT] ⚙️ Alive at ${new Date().toLocaleTimeString()} (RAM: ${Math.round(process.memoryUsage().rss / 1024 / 1024)}MB)`);
-    }, 60000);
-    serverHeartbeatHandle.unref?.();
+  serverHeartbeatHandle = setInterval(() => {
+    console.log(
+      `[SERVER-HEARTBEAT] ⚙️ Alive at ${new Date().toLocaleTimeString()} (RAM: ${Math.round(process.memoryUsage().rss / 1024 / 1024)}MB)`
+    );
+  }, 60000);
+  serverHeartbeatHandle.unref?.();
 }
 
 // Enhanced Logging middleware
 app.use((req, res, next) => {
   const start = Date.now();
   const referer = req.headers.referer || 'unknown';
-  
+
   const isQuietPath = req.url === '/' || req.url === '/health';
-  const shouldLog = config.NODE_ENV === 'development' && (!isQuietPath || process.env.VERBOSE_LOGS === 'true');
+  const shouldLog =
+    config.NODE_ENV === 'development' && (!isQuietPath || process.env.VERBOSE_LOGS === 'true');
 
   if (shouldLog) {
-    console.log(`>>> [REQUISICAO] [${req.correlationId}] ${req.method} ${req.url} [Referer: ${referer}]`);
+    console.log(
+      `>>> [REQUISICAO] [${req.correlationId}] ${req.method} ${req.url} [Referer: ${referer}]`
+    );
   }
 
   res.on('finish', () => {
     const duration = Date.now() - start;
     if (shouldLog || res.statusCode >= 400) {
-        console.log(`<<< [RESPOSTA] [${req.correlationId}] ${req.method} ${req.url} - Status: ${res.statusCode} (${duration}ms)`);
+      console.log(
+        `<<< [RESPOSTA] [${req.correlationId}] ${req.method} ${req.url} - Status: ${res.statusCode} (${duration}ms)`
+      );
     }
   });
 
@@ -94,7 +104,7 @@ app.use((req, res, next) => {
 
 // Root handler to avoid 404 in logs
 app.get('/', (req, res) => {
-    res.json({ message: 'IMG Backend Root', status: 'ready' });
+  res.json({ message: 'IMG Backend Root', status: 'ready' });
 });
 
 // Security middleware
@@ -112,7 +122,6 @@ app.use('/api/v1/system', systemRoutes);
 app.use('/api/v1/ai-game', aiGameRoutes);
 app.use('/api/v1/games/garden-quest', aiGameRoutes);
 app.use('/api/v1/agents', createAgentRoutes({ agentService, authMiddleware: requireAuth }));
-
 
 // Health check (Cloud Run requirement)
 app.get('/health', async (req, res) => {
@@ -133,8 +142,10 @@ app.get('/health', async (req, res) => {
       realmLease: {
         realmId: leaseSnapshot.realmId || config.REALM_ID,
         required: config.AGENT_WORLD_REQUIRE_LEASE,
-        localInstanceId: leaseSnapshot.localInstanceId || runtimeStatus.realmLease?.localInstanceId || null,
-        ownerInstanceId: leaseSnapshot.ownerInstanceId || runtimeStatus.realmLease?.ownerInstanceId || null,
+        localInstanceId:
+          leaseSnapshot.localInstanceId || runtimeStatus.realmLease?.localInstanceId || null,
+        ownerInstanceId:
+          leaseSnapshot.ownerInstanceId || runtimeStatus.realmLease?.ownerInstanceId || null,
         isLeader: Boolean(leaseSnapshot.isLeader),
         expiresAt: leaseSnapshot.expiresAt || null,
         lastHeartbeatAt: leaseSnapshot.checkedAt || leaseSnapshot.lastHeartbeatAt || null,
@@ -219,17 +230,22 @@ async function startServer() {
     applyRuntimeLeaseSnapshot(realmLeaseService.getSnapshot?.(), { evacuateOnLoss: false });
 
     // Realm lease heartbeat (leader election)
-    realmLeaseHeartbeatHandle = setInterval(() => {
-      realmLeaseService.heartbeat()
-        .then((snapshot) => {
-          applyRuntimeLeaseSnapshot(snapshot, { evacuateOnLoss: true });
-        })
-        .catch((error) => {
-          console.error('Realm lease heartbeat failed:', error.message);
-        });
-    }, Math.round(realmLeaseService.leaseTtlMs / 2));
+    realmLeaseHeartbeatHandle = setInterval(
+      () => {
+        realmLeaseService
+          .heartbeat()
+          .then((snapshot) => {
+            applyRuntimeLeaseSnapshot(snapshot, { evacuateOnLoss: true });
+          })
+          .catch((error) => {
+            console.error('Realm lease heartbeat failed:', error.message);
+          });
+      },
+      Math.round(realmLeaseService.leaseTtlMs / 2)
+    );
     realmLeaseHeartbeatHandle.unref?.();
-    realmLeaseService.heartbeat()
+    realmLeaseService
+      .heartbeat()
       .then((snapshot) => {
         applyRuntimeLeaseSnapshot(snapshot, { evacuateOnLoss: true });
       })

@@ -3,7 +3,10 @@ const { requireAuth } = require('../middleware/authenticate');
 const config = require('../config');
 const { insertLog } = require('../database/postgres');
 const { getRequestIp, getRequestUserAgent } = require('../shared/request');
-const { formatSuspicionDetails, validatePlayerCommandBody } = require('../games/garden-quest/command-security');
+const {
+  formatSuspicionDetails,
+  validatePlayerCommandBody,
+} = require('../games/garden-quest/command-security');
 
 function parseSinceSeq(value) {
   const parsed = Number.parseInt(String(value || '').trim(), 10);
@@ -196,7 +199,13 @@ function createAiGameRoutes({
     }
 
     const result = worldGateway
-      ? { ok: true, queued: true, queueAccepted: Boolean(await worldGateway.enqueuePlayerCommand(req.authUser, validation.normalizedCommand)) }
+      ? {
+          ok: true,
+          queued: true,
+          queueAccepted: Boolean(
+            await worldGateway.enqueuePlayerCommand(req.authUser, validation.normalizedCommand)
+          ),
+        }
       : await gameEngine.applyPlayerCommand(req.authUser, validation.normalizedCommand);
 
     if (!result?.ok) {

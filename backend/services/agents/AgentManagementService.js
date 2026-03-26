@@ -13,11 +13,26 @@ function sanitizePolicy(policy) {
 
   return {
     dailyRunBudget: valueOr('dailyRunBudget', config.AGENT_DEFAULT_DAILY_RUN_BUDGET, 1, 100000),
-    minDecisionIntervalMs: valueOr('minDecisionIntervalMs', config.AGENT_DEFAULT_MIN_DECISION_INTERVAL_MS, 250, 600000),
+    minDecisionIntervalMs: valueOr(
+      'minDecisionIntervalMs',
+      config.AGENT_DEFAULT_MIN_DECISION_INTERVAL_MS,
+      250,
+      600000
+    ),
     failureThreshold: valueOr('failureThreshold', config.AGENT_CIRCUIT_FAILURE_THRESHOLD, 1, 100),
     cooldownMs: valueOr('cooldownMs', config.AGENT_CIRCUIT_COOLDOWN_MS, 1000, 3600000),
-    providerFailureThreshold: valueOr('providerFailureThreshold', config.AGENT_PROVIDER_CIRCUIT_FAILURE_THRESHOLD, 1, 200),
-    providerCooldownMs: valueOr('providerCooldownMs', config.AGENT_PROVIDER_CIRCUIT_COOLDOWN_MS, 1000, 3600000),
+    providerFailureThreshold: valueOr(
+      'providerFailureThreshold',
+      config.AGENT_PROVIDER_CIRCUIT_FAILURE_THRESHOLD,
+      1,
+      200
+    ),
+    providerCooldownMs: valueOr(
+      'providerCooldownMs',
+      config.AGENT_PROVIDER_CIRCUIT_COOLDOWN_MS,
+      1000,
+      3600000
+    ),
   };
 }
 
@@ -35,8 +50,10 @@ class AgentManagementService {
   async createAgent({ ownerUserId, body }) {
     const name = typeof body?.name === 'string' ? body.name.trim().slice(0, 64) : '';
     const mode = typeof body?.mode === 'string' ? body.mode.trim() : 'hosted_api_key';
-    const provider = typeof body?.provider === 'string' ? body.provider.trim().toLowerCase() : 'openai';
-    const routeHint = typeof body?.routeHint === 'string' ? body.routeHint.trim().slice(0, 64) : null;
+    const provider =
+      typeof body?.provider === 'string' ? body.provider.trim().toLowerCase() : 'openai';
+    const routeHint =
+      typeof body?.routeHint === 'string' ? body.routeHint.trim().slice(0, 64) : null;
     const policyJson = sanitizePolicy(body?.policy);
 
     if (!name) {
@@ -79,7 +96,9 @@ class AgentManagementService {
 
   async storeApiKey({ ownerUserId, agentId, apiKey }) {
     if (!this.secretVault) {
-      const error = new Error('Hosted API key mode is disabled until AGENT_SECRET_MASTER_KEY_HEX is configured');
+      const error = new Error(
+        'Hosted API key mode is disabled until AGENT_SECRET_MASTER_KEY_HEX is configured'
+      );
       error.statusCode = 503;
       throw error;
     }
@@ -135,21 +154,28 @@ class AgentManagementService {
         throw error;
       }
     } catch (parseError) {
-      const error = new Error(parseError?.statusCode === 400 ? parseError.message : 'baseUrl must be a valid absolute URL');
+      const error = new Error(
+        parseError?.statusCode === 400 ? parseError.message : 'baseUrl must be a valid absolute URL'
+      );
       error.statusCode = 400;
       throw error;
     }
 
     const normalizedAuthMode = endpoint?.authMode === 'bearer' ? 'bearer' : 'none';
-    const existingEndpoint = await this.agentRepository.getAgentEndpointByAgentId(agentId).catch(() => null);
-    const inputAuthSecret = typeof endpoint?.authSecret === 'string' ? endpoint.authSecret.trim() : '';
+    const existingEndpoint = await this.agentRepository
+      .getAgentEndpointByAgentId(agentId)
+      .catch(() => null);
+    const inputAuthSecret =
+      typeof endpoint?.authSecret === 'string' ? endpoint.authSecret.trim() : '';
     let authSecretPayload = null;
     let authSecretFingerprint = null;
 
     if (normalizedAuthMode === 'bearer') {
       if (inputAuthSecret) {
         if (!this.secretVault) {
-          const error = new Error('Endpoint bearer auth is disabled until AGENT_SECRET_MASTER_KEY_HEX is configured');
+          const error = new Error(
+            'Endpoint bearer auth is disabled until AGENT_SECRET_MASTER_KEY_HEX is configured'
+          );
           error.statusCode = 503;
           throw error;
         }
@@ -162,7 +188,9 @@ class AgentManagementService {
         authSecretFingerprint = existingEndpoint.authSecretFingerprint;
       } else if (existingEndpoint?.authSecret) {
         if (!this.secretVault) {
-          const error = new Error('Endpoint bearer auth is disabled until AGENT_SECRET_MASTER_KEY_HEX is configured');
+          const error = new Error(
+            'Endpoint bearer auth is disabled until AGENT_SECRET_MASTER_KEY_HEX is configured'
+          );
           error.statusCode = 503;
           throw error;
         }

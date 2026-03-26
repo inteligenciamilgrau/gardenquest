@@ -181,13 +181,9 @@ test('queue worker flushes snapshot and persists derived runtime events', async 
           publicState: {
             serverTime: '2026-01-01T00:00:10.000Z',
             tick: 11,
-            players: [
-              { id: 'player-7', actorType: 'player', name: 'Jogador Sete' },
-            ],
+            players: [{ id: 'player-7', actorType: 'player', name: 'Jogador Sete' }],
             playerChat: {
-              entries: [
-                { id: 1, playerId: 'player-7', playerName: 'Jogador Sete', message: 'oi' },
-              ],
+              entries: [{ id: 1, playerId: 'player-7', playerName: 'Jogador Sete', message: 'oi' }],
             },
             world: {
               soccer: {
@@ -200,9 +196,7 @@ test('queue worker flushes snapshot and persists derived runtime events', async 
             },
             leaderboard: {
               updatedAt: '2026-01-01T00:00:10.000Z',
-              entries: [
-                { rank: 1, actorType: 'player', actorName: 'Jogador Sete', bestScore: 12 },
-              ],
+              entries: [{ rank: 1, actorType: 'player', actorName: 'Jogador Sete', bestScore: 12 }],
             },
           },
           actorSnapshots: [],

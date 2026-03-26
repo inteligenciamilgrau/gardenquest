@@ -1,10 +1,13 @@
 const { SecretVault } = require('../services/crypto/SecretVault');
 
-const LOCAL_FALLBACK_AGENT_SECRET_MASTER_KEY_HEX = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+const LOCAL_FALLBACK_AGENT_SECRET_MASTER_KEY_HEX =
+  '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
 
 function resolveAgentSecretMasterKeyHex({ appEnv = 'local', env = process.env } = {}) {
-  return env.AGENT_SECRET_MASTER_KEY_HEX
-    || (appEnv === 'local' ? LOCAL_FALLBACK_AGENT_SECRET_MASTER_KEY_HEX : null);
+  return (
+    env.AGENT_SECRET_MASTER_KEY_HEX ||
+    (appEnv === 'local' ? LOCAL_FALLBACK_AGENT_SECRET_MASTER_KEY_HEX : null)
+  );
 }
 
 function createRuntimeSecretVault({

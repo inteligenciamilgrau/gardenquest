@@ -40,12 +40,11 @@ function respondInternalError(req, res, logLabel, publicMessage, error) {
   res.status(statusCode).json(payload);
 }
 
-function respondKnownError(req, res, {
-  statusCode,
-  publicMessage,
-  fallbackCode,
-  extraPayload = null,
-}) {
+function respondKnownError(
+  req,
+  res,
+  { statusCode, publicMessage, fallbackCode, extraPayload = null }
+) {
   const { statusCode: resolvedStatusCode, payload } = buildErrorResponse(
     {
       statusCode,
@@ -61,7 +60,10 @@ function respondKnownError(req, res, {
 }
 
 async function requireAdminUser(req, res) {
-  const authenticatedUser = await getAuthenticatedUser(req, { requireActiveSession: true, touchSession: true });
+  const authenticatedUser = await getAuthenticatedUser(req, {
+    requireActiveSession: true,
+    touchSession: true,
+  });
 
   if (!authenticatedUser) {
     respondKnownError(req, res, {
@@ -106,7 +108,10 @@ async function appendAdminAuditLog(req, adminUser, event, details = {}) {
 router.post('/sync', async (req, res) => {
   const type = normalizeText(req.body?.type, 64);
   const category = normalizeLogCategory(req.body?.category);
-  const authenticatedUser = await getAuthenticatedUser(req, { requireActiveSession: true, touchSession: true });
+  const authenticatedUser = await getAuthenticatedUser(req, {
+    requireActiveSession: true,
+    touchSession: true,
+  });
 
   if (!type) {
     return respondKnownError(req, res, {
@@ -160,13 +165,28 @@ router.get('/ops-dashboard', async (req, res) => {
   if (!adminUser) return;
 
   try {
-    const [sessionOverview, recentSessions, agentHealth, queueOverview, deadLetters] = await Promise.all([
-      authSessionRepository.getAuthSessionOverview().catch(() => ({ activeCount: 0, revokedCount: 0, activeUsers: 0 })),
-      authSessionRepository.listRecentActiveAuthSessions(30).catch(() => []),
-      agentRepository.listAgentHealthOverview(50).catch(() => []),
-      worldRuntimeRepository.getWorldCommandQueueOverview(config.REALM_ID).catch(() => ({ pendingCount: 0, processingCount: 0, errorCount: 0, deadLetterCount: 0, doneCount: 0, maxPriority: 0, maxAttemptsSeen: 0 })),
-      worldRuntimeRepository.listWorldCommandDeadLetters({ realmId: config.REALM_ID, limit: 25 }).catch(() => []),
-    ]);
+    const [sessionOverview, recentSessions, agentHealth, queueOverview, deadLetters] =
+      await Promise.all([
+        authSessionRepository
+          .getAuthSessionOverview()
+          .catch(() => ({ activeCount: 0, revokedCount: 0, activeUsers: 0 })),
+        authSessionRepository.listRecentActiveAuthSessions(30).catch(() => []),
+        agentRepository.listAgentHealthOverview(50).catch(() => []),
+        worldRuntimeRepository
+          .getWorldCommandQueueOverview(config.REALM_ID)
+          .catch(() => ({
+            pendingCount: 0,
+            processingCount: 0,
+            errorCount: 0,
+            deadLetterCount: 0,
+            doneCount: 0,
+            maxPriority: 0,
+            maxAttemptsSeen: 0,
+          })),
+        worldRuntimeRepository
+          .listWorldCommandDeadLetters({ realmId: config.REALM_ID, limit: 25 })
+          .catch(() => []),
+      ]);
 
     res.json({
       sessionOverview,
@@ -191,7 +211,13 @@ router.get('/queue/dead-letters', async (req, res) => {
     });
     res.json({ items });
   } catch (error) {
-    respondInternalError(req, res, 'Dead letter list error', 'Internal dead letter list error', error);
+    respondInternalError(
+      req,
+      res,
+      'Dead letter list error',
+      'Internal dead letter list error',
+      error
+    );
   }
 });
 
@@ -254,7 +280,13 @@ router.post('/queue/:id/dead-letter', async (req, res) => {
 
     res.json({ ok: true, item: result });
   } catch (error) {
-    respondInternalError(req, res, 'Queue dead-letter error', 'Internal queue dead-letter error', error);
+    respondInternalError(
+      req,
+      res,
+      'Queue dead-letter error',
+      'Internal queue dead-letter error',
+      error
+    );
   }
 });
 
@@ -284,7 +316,13 @@ router.post('/sessions/:sessionId/revoke', async (req, res) => {
 
     res.json({ ok: true, session: revoked });
   } catch (error) {
-    respondInternalError(req, res, 'Admin revoke session error', 'Internal revoke session error', error);
+    respondInternalError(
+      req,
+      res,
+      'Admin revoke session error',
+      'Internal revoke session error',
+      error
+    );
   }
 });
 
@@ -334,7 +372,13 @@ router.post('/agents/:agentId/resume', async (req, res) => {
     await appendAdminAuditLog(req, adminUser, 'admin_resume_agent', { agentId: agent.id });
     res.json({ ok: true, agent });
   } catch (error) {
-    respondInternalError(req, res, 'Admin resume agent error', 'Internal resume agent error', error);
+    respondInternalError(
+      req,
+      res,
+      'Admin resume agent error',
+      'Internal resume agent error',
+      error
+    );
   }
 });
 
@@ -358,10 +402,18 @@ router.post('/agents/:agentId/clear-quarantine', async (req, res) => {
       status: ['paused', 'revoked'].includes(agent.status) ? agent.status : 'active',
     });
 
-    await appendAdminAuditLog(req, adminUser, 'admin_clear_agent_quarantine', { agentId: req.params.agentId });
+    await appendAdminAuditLog(req, adminUser, 'admin_clear_agent_quarantine', {
+      agentId: req.params.agentId,
+    });
     res.json({ ok: true, agent: updatedAgent || agent });
   } catch (error) {
-    respondInternalError(req, res, 'Admin clear quarantine error', 'Internal clear quarantine error', error);
+    respondInternalError(
+      req,
+      res,
+      'Admin clear quarantine error',
+      'Internal clear quarantine error',
+      error
+    );
   }
 });
 

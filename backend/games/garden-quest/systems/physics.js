@@ -1,7 +1,4 @@
-function createPhysicsSystem({
-  constants,
-  helpers,
-}) {
+function createPhysicsSystem({ constants, helpers }) {
   const {
     ACTION_RADIUS,
     APPLE_REGROW_INTERVAL_MS,
@@ -83,9 +80,9 @@ function createPhysicsSystem({
     const rotationY = Number(actor?.rotationY) || 0;
 
     return {
-      x: (Number(actor?.position?.x) || 0) + (Math.sin(rotationY) * forwardOffset),
+      x: (Number(actor?.position?.x) || 0) + Math.sin(rotationY) * forwardOffset,
       y: radius,
-      z: (Number(actor?.position?.z) || 0) + (Math.cos(rotationY) * forwardOffset),
+      z: (Number(actor?.position?.z) || 0) + Math.cos(rotationY) * forwardOffset,
     };
   }
 
@@ -217,7 +214,7 @@ function createPhysicsSystem({
 
     const moveDeltaX = player.position.x - (Number(previousPosition?.x) || 0);
     const moveDeltaZ = player.position.z - (Number(previousPosition?.z) || 0);
-    const moveDistance = Math.sqrt((moveDeltaX * moveDeltaX) + (moveDeltaZ * moveDeltaZ));
+    const moveDistance = Math.sqrt(moveDeltaX * moveDeltaX + moveDeltaZ * moveDeltaZ);
     if (moveDistance <= 0.001) {
       return;
     }
@@ -231,7 +228,7 @@ function createPhysicsSystem({
     const closestPoint = getClosestPointOnSegment(playerStart, player.position, ball.position);
     const ballDeltaX = (Number(ball.position?.x) || 0) - closestPoint.x;
     const ballDeltaZ = (Number(ball.position?.z) || 0) - closestPoint.z;
-    const distanceToBall = Math.sqrt((ballDeltaX * ballDeltaX) + (ballDeltaZ * ballDeltaZ));
+    const distanceToBall = Math.sqrt(ballDeltaX * ballDeltaX + ballDeltaZ * ballDeltaZ);
     if (distanceToBall > touchDistance) {
       return;
     }
@@ -314,13 +311,13 @@ function createPhysicsSystem({
     const metrics = getSoccerFieldMetrics(engine.state.world);
     const velocityX = Number(ball.velocity?.x) || 0;
     const velocityZ = Number(ball.velocity?.z) || 0;
-    const speed = Math.sqrt((velocityX * velocityX) + (velocityZ * velocityZ));
+    const speed = Math.sqrt(velocityX * velocityX + velocityZ * velocityZ);
 
     if (speed < SOCCER_BALL_MIN_SPEED) {
       ball.velocity.x = 0;
       ball.velocity.z = 0;
     } else {
-      const nextSpeed = Math.max(0, speed - (SOCCER_BALL_DRAG_PER_SECOND * deltaSeconds));
+      const nextSpeed = Math.max(0, speed - SOCCER_BALL_DRAG_PER_SECOND * deltaSeconds);
       const speedScale = nextSpeed > 0 ? nextSpeed / speed : 0;
       ball.velocity.x = velocityX * speedScale;
       ball.velocity.z = velocityZ * speedScale;
@@ -330,7 +327,8 @@ function createPhysicsSystem({
     ball.position.z += (Number(ball.velocity.z) || 0) * deltaSeconds;
     ball.position.y = ball.radius || metrics.radius;
 
-    const isInsideGoalMouth = ball.position.x >= metrics.goalXMin && ball.position.x <= metrics.goalXMax;
+    const isInsideGoalMouth =
+      ball.position.x >= metrics.goalXMin && ball.position.x <= metrics.goalXMax;
 
     if (ball.inGoal === 'north') {
       if (ball.position.x < metrics.goalXMin) {
@@ -418,16 +416,27 @@ function createPhysicsSystem({
       const velocityY = Number(arrow.velocity?.y) || 0;
       const velocityZ = Number(arrow.velocity?.z) || 0;
       const nextPosition = {
-        x: (Number(arrow.position?.x) || 0) + (velocityX * deltaSeconds),
-        y: (Number(arrow.position?.y) || 0) + (velocityY * deltaSeconds),
-        z: (Number(arrow.position?.z) || 0) + (velocityZ * deltaSeconds),
+        x: (Number(arrow.position?.x) || 0) + velocityX * deltaSeconds,
+        y: (Number(arrow.position?.y) || 0) + velocityY * deltaSeconds,
+        z: (Number(arrow.position?.z) || 0) + velocityZ * deltaSeconds,
       };
 
-      if (!isRouteSegmentClear(engine.state.world, arrow.position, nextPosition, ARROW_PROJECTILE_RADIUS)) {
+      if (
+        !isRouteSegmentClear(
+          engine.state.world,
+          arrow.position,
+          nextPosition,
+          ARROW_PROJECTILE_RADIUS
+        )
+      ) {
         return;
       }
 
-      const hitTarget = engine.getArrowHitTarget(arrow.ownerActorId, previousPosition, nextPosition);
+      const hitTarget = engine.getArrowHitTarget(
+        arrow.ownerActorId,
+        previousPosition,
+        nextPosition
+      );
       if (hitTarget) {
         engine.applyArrowHit(hitTarget, arrow, now);
         return;
@@ -466,9 +475,8 @@ function createPhysicsSystem({
       }
 
       tree.applesRemaining = Math.min(maxApples, tree.applesRemaining + 1);
-      tree.nextAppleRegrowAt = tree.applesRemaining < maxApples
-        ? now + APPLE_REGROW_INTERVAL_MS
-        : null;
+      tree.nextAppleRegrowAt =
+        tree.applesRemaining < maxApples ? now + APPLE_REGROW_INTERVAL_MS : null;
     });
   }
 

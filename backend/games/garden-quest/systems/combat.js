@@ -1,7 +1,4 @@
-function createCombatSystem({
-  constants,
-  helpers,
-}) {
+function createCombatSystem({ constants, helpers }) {
   const {
     ACTION_COOLDOWN_MS,
     ACTOR_HIT_FLASH_DURATION_MS,
@@ -52,26 +49,35 @@ function createCombatSystem({
         return;
       }
 
-      const verticalDelta = Math.abs((Number(target.position?.y) || 0) - (Number(actor.position?.y) || 0));
+      const verticalDelta = Math.abs(
+        (Number(target.position?.y) || 0) - (Number(actor.position?.y) || 0)
+      );
       if (verticalDelta > SWORD_ATTACK_VERTICAL_TOLERANCE) {
         return;
       }
 
       const deltaX = (Number(target.position?.x) || 0) - (Number(actor.position?.x) || 0);
       const deltaZ = (Number(target.position?.z) || 0) - (Number(actor.position?.z) || 0);
-      const distance = Math.sqrt((deltaX * deltaX) + (deltaZ * deltaZ));
+      const distance = Math.sqrt(deltaX * deltaX + deltaZ * deltaZ);
       if (distance <= 0.001 || distance > SWORD_ATTACK_RADIUS) {
         return;
       }
 
       const directionX = deltaX / distance;
       const directionZ = deltaZ / distance;
-      const facingDot = (forwardX * directionX) + (forwardZ * directionZ);
+      const facingDot = forwardX * directionX + forwardZ * directionZ;
       if (facingDot < SWORD_ATTACK_ARC_DOT_THRESHOLD) {
         return;
       }
 
-      if (!isRouteSegmentClear(engine.state.world, actor.position, target.position, SWORD_ATTACK_LINE_PADDING)) {
+      if (
+        !isRouteSegmentClear(
+          engine.state.world,
+          actor.position,
+          target.position,
+          SWORD_ATTACK_LINE_PADDING
+        )
+      ) {
         return;
       }
 
@@ -94,12 +100,11 @@ function createCombatSystem({
     return candidates[0]?.target || null;
   }
 
-  function applyHitResourceLoss(engine, target, {
-    hitType = 'impact',
-    appleDamage = 0,
-    waterDamage = 0,
-    now = Date.now(),
-  } = {}) {
+  function applyHitResourceLoss(
+    engine,
+    target,
+    { hitType = 'impact', appleDamage = 0, waterDamage = 0, now = Date.now() } = {}
+  ) {
     if (!target || target.status === 'dead') {
       return {
         applesLost: 0,
@@ -124,7 +129,12 @@ function createCombatSystem({
     };
   }
 
-  function applyActorKnockback(engine, target, sourceRotationY, distance = SWORD_KNOCKBACK_DISTANCE) {
+  function applyActorKnockback(
+    engine,
+    target,
+    sourceRotationY,
+    distance = SWORD_KNOCKBACK_DISTANCE
+  ) {
     if (!target || target.status === 'dead') {
       return false;
     }
@@ -142,7 +152,7 @@ function createCombatSystem({
     let movedAny = false;
 
     for (let index = 0; index < steps; index += 1) {
-      const remainingDistance = totalDistance - (index * stepDistance);
+      const remainingDistance = totalDistance - index * stepDistance;
       const currentStepDistance = Math.min(stepDistance, remainingDistance);
       if (currentStepDistance <= 0.0001) {
         break;
@@ -152,11 +162,11 @@ function createCombatSystem({
         engine.state.world,
         currentPosition,
         {
-          x: currentPosition.x + (directionX * currentStepDistance),
+          x: currentPosition.x + directionX * currentStepDistance,
           y: currentPosition.y,
-          z: currentPosition.z + (directionZ * currentStepDistance),
+          z: currentPosition.z + directionZ * currentStepDistance,
         },
-        PLAYER_COLLISION_RADIUS,
+        PLAYER_COLLISION_RADIUS
       );
 
       if (distanceBetween(currentPosition, resolvedPosition) <= 0.01) {
@@ -173,7 +183,13 @@ function createCombatSystem({
     return movedAny;
   }
 
-  function performSwordAttack(engine, actor, eventName, logContext, { clearMovement = false } = {}) {
+  function performSwordAttack(
+    engine,
+    actor,
+    eventName,
+    logContext,
+    { clearMovement = false } = {}
+  ) {
     if (!actor || actor.status === 'dead') {
       return false;
     }
@@ -196,10 +212,13 @@ function createCombatSystem({
     }
 
     if (!target) {
-      engine.logEvent(eventName, buildPlayerLogContext(actor, {
-        userAgent: logContext?.userAgent || 'backend-game',
-        details: 'result="miss"; target_id="-"; target_name="-"',
-      }));
+      engine.logEvent(
+        eventName,
+        buildPlayerLogContext(actor, {
+          userAgent: logContext?.userAgent || 'backend-game',
+          details: 'result="miss"; target_id="-"; target_name="-"',
+        })
+      );
       return true;
     }
 
@@ -226,15 +245,21 @@ function createCombatSystem({
         details: `attacker_id=${formatLogDetailValue(actor.id)}; attacker_name=${formatLogDetailValue(actor.name || 'Jogador')}; apples_lost=${applesLost}; water_lost=${roundNumber(waterLost, 1)}`,
       });
     } else {
-      engine.logEvent('player_hit_by_sword', buildPlayerLogContext(target, {
-        details: `attacker_id=${formatLogDetailValue(actor.id)}; attacker_name=${formatLogDetailValue(actor.name || 'Jogador')}; apples_lost=${applesLost}; water_lost=${roundNumber(waterLost, 1)}`,
-      }));
+      engine.logEvent(
+        'player_hit_by_sword',
+        buildPlayerLogContext(target, {
+          details: `attacker_id=${formatLogDetailValue(actor.id)}; attacker_name=${formatLogDetailValue(actor.name || 'Jogador')}; apples_lost=${applesLost}; water_lost=${roundNumber(waterLost, 1)}`,
+        })
+      );
     }
 
-    engine.logEvent(eventName, buildPlayerLogContext(actor, {
-      userAgent: logContext?.userAgent || 'backend-game',
-      details: `target_id=${formatLogDetailValue(target.id)}; target_name=${formatLogDetailValue(target.name || 'Jogador')}; apples_lost=${applesLost}; water_lost=${roundNumber(waterLost, 1)}`,
-    }));
+    engine.logEvent(
+      eventName,
+      buildPlayerLogContext(actor, {
+        userAgent: logContext?.userAgent || 'backend-game',
+        details: `target_id=${formatLogDetailValue(target.id)}; target_name=${formatLogDetailValue(target.name || 'Jogador')}; apples_lost=${applesLost}; water_lost=${roundNumber(waterLost, 1)}`,
+      })
+    );
     return true;
   }
 
@@ -259,9 +284,9 @@ function createCombatSystem({
       id: `arrow-${engine.state.nextArrowProjectileId}`,
       ownerActorId: actor.id,
       position: {
-        x: (Number(actor.position?.x) || 0) + (directionX * ARROW_FORWARD_OFFSET),
+        x: (Number(actor.position?.x) || 0) + directionX * ARROW_FORWARD_OFFSET,
         y: (Number(actor.position?.y) || 0) + ARROW_START_HEIGHT,
-        z: (Number(actor.position?.z) || 0) + (directionZ * ARROW_FORWARD_OFFSET),
+        z: (Number(actor.position?.z) || 0) + directionZ * ARROW_FORWARD_OFFSET,
       },
       velocity: {
         x: directionX * ARROW_PROJECTILE_SPEED,
@@ -281,10 +306,13 @@ function createCombatSystem({
       engine.clearMovement();
     }
 
-    engine.logEvent(eventName, buildPlayerLogContext(actor, {
-      userAgent: logContext?.userAgent || 'backend-game',
-      details: `arrows_remaining=${actor.inventory.arrows}; rotation_y=${roundNumber(rotationY, 3)}`,
-    }));
+    engine.logEvent(
+      eventName,
+      buildPlayerLogContext(actor, {
+        userAgent: logContext?.userAgent || 'backend-game',
+        details: `arrows_remaining=${actor.inventory.arrows}; rotation_y=${roundNumber(rotationY, 3)}`,
+      })
+    );
     return true;
   }
 
@@ -305,31 +333,28 @@ function createCombatSystem({
       const actorPositionZ = Number(actor.position?.z) || 0;
       const deltaX = actorPositionX - closestPoint.x;
       const deltaZ = actorPositionZ - closestPoint.z;
-      const planarDistanceSquared = (deltaX * deltaX) + (deltaZ * deltaZ);
+      const planarDistanceSquared = deltaX * deltaX + deltaZ * deltaZ;
       if (planarDistanceSquared > hitRadiusSquared) {
         return;
       }
 
-      const arrowY = startY + ((endY - startY) * closestPoint.progress);
+      const arrowY = startY + (endY - startY) * closestPoint.progress;
       const actorBaseY = Number(actor.position?.y) || 0;
       if (
-        arrowY < (actorBaseY + ARROW_HIT_MIN_Y_OFFSET)
-        || arrowY > (actorBaseY + ARROW_HIT_MAX_Y_OFFSET)
+        arrowY < actorBaseY + ARROW_HIT_MIN_Y_OFFSET ||
+        arrowY > actorBaseY + ARROW_HIT_MAX_Y_OFFSET
       ) {
         return;
       }
 
-      if (
-        bestCandidate
-        && closestPoint.progress > bestCandidate.progress + 0.0001
-      ) {
+      if (bestCandidate && closestPoint.progress > bestCandidate.progress + 0.0001) {
         return;
       }
 
       if (
-        bestCandidate
-        && Math.abs(closestPoint.progress - bestCandidate.progress) <= 0.0001
-        && planarDistanceSquared >= bestCandidate.planarDistanceSquared
+        bestCandidate &&
+        Math.abs(closestPoint.progress - bestCandidate.progress) <= 0.0001 &&
+        planarDistanceSquared >= bestCandidate.planarDistanceSquared
       ) {
         return;
       }
@@ -373,9 +398,12 @@ function createCombatSystem({
         details: `shooter_id=${formatLogDetailValue(shooterId)}; shooter_name=${formatLogDetailValue(shooterName)}; apples_lost=${applesLost}; water_lost=${roundNumber(waterLost, 1)}`,
       });
     } else {
-      engine.logEvent('player_hit_by_arrow', buildPlayerLogContext(target, {
-        details: `shooter_id=${formatLogDetailValue(shooterId)}; shooter_name=${formatLogDetailValue(shooterName)}; apples_lost=${applesLost}; water_lost=${roundNumber(waterLost, 1)}`,
-      }));
+      engine.logEvent(
+        'player_hit_by_arrow',
+        buildPlayerLogContext(target, {
+          details: `shooter_id=${formatLogDetailValue(shooterId)}; shooter_name=${formatLogDetailValue(shooterName)}; apples_lost=${applesLost}; water_lost=${roundNumber(waterLost, 1)}`,
+        })
+      );
     }
 
     return true;

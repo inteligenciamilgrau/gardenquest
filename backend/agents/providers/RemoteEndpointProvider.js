@@ -104,19 +104,23 @@ class RemoteEndpointProvider extends AgentRuntime {
     const url = `${parsedUrl.origin}${parsedUrl.pathname}${parsedUrl.search}`;
 
     const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-    const isRetryableStatus = (statusCode) => [408, 409, 429, 500, 502, 503, 504].includes(statusCode);
+    const isRetryableStatus = (statusCode) =>
+      [408, 409, 429, 500, 502, 503, 504].includes(statusCode);
     const isRetryableError = (error) => {
       const code = String(error?.code || '').toUpperCase();
-      return code === 'UND_ERR_CONNECT_TIMEOUT'
-        || code === 'UND_ERR_HEADERS_TIMEOUT'
-        || code === 'UND_ERR_BODY_TIMEOUT'
-        || code === 'ECONNRESET'
-        || code === 'ECONNREFUSED'
-        || code === 'EAI_AGAIN'
-        || code === 'ETIMEDOUT'
-        || code === 'ENOTFOUND';
+      return (
+        code === 'UND_ERR_CONNECT_TIMEOUT' ||
+        code === 'UND_ERR_HEADERS_TIMEOUT' ||
+        code === 'UND_ERR_BODY_TIMEOUT' ||
+        code === 'ECONNRESET' ||
+        code === 'ECONNREFUSED' ||
+        code === 'EAI_AGAIN' ||
+        code === 'ETIMEDOUT' ||
+        code === 'ENOTFOUND'
+      );
     };
-    const computeDelay = (attempt) => Math.min(2000, 220 * (2 ** (attempt - 1))) + Math.floor(Math.random() * 120);
+    const computeDelay = (attempt) =>
+      Math.min(2000, 220 * 2 ** (attempt - 1)) + Math.floor(Math.random() * 120);
 
     return (async () => {
       let lastError = null;

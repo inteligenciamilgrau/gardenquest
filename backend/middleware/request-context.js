@@ -10,9 +10,7 @@ function normalizeCorrelationId(value) {
     return null;
   }
 
-  return /^[a-zA-Z0-9._:-]{8,128}$/.test(trimmed)
-    ? trimmed
-    : null;
+  return /^[a-zA-Z0-9._:-]{8,128}$/.test(trimmed) ? trimmed : null;
 }
 
 function requestContext(req, res, next) {

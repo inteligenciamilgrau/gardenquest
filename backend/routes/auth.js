@@ -17,7 +17,10 @@ const { requireAuth } = require('../middleware/authenticate');
 
 const AUTH_COOKIE_NAME = 'auth_token';
 const OAUTH_STATE_COOKIE_NAME = 'oauth_state';
-const COOKIE_MAX_AGE_MS = Math.max(60_000, Number(config.SESSION_COOKIE_MAX_AGE_MS) || (24 * 60 * 60 * 1000));
+const COOKIE_MAX_AGE_MS = Math.max(
+  60_000,
+  Number(config.SESSION_COOKIE_MAX_AGE_MS) || 24 * 60 * 60 * 1000
+);
 const OAUTH_STATE_MAX_AGE_MS = 10 * 60 * 1000;
 const OAUTH_STATE_BASE_URL = 'https://frontend.local';
 
@@ -197,7 +200,10 @@ async function syncUserRecord(user) {
   }
 }
 
-function disconnectUserFromWorld(user, { gameEngine = null, worldGateway = null, reason = 'logout' } = {}) {
+function disconnectUserFromWorld(
+  user,
+  { gameEngine = null, worldGateway = null, reason = 'logout' } = {}
+) {
   if (!user?.id) {
     return;
   }
@@ -258,7 +264,8 @@ function createAuthRoutes({ gameEngine = null, worldGateway = null } = {}) {
     }
 
     const name = typeof req.body?.name === 'string' ? req.body.name.trim() : 'Dev User';
-    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : 'dev@localhost';
+    const email =
+      typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : 'dev@localhost';
 
     if (!name || !email) {
       return res.status(400).json({ error: 'name and email are required' });
@@ -433,7 +440,11 @@ function createAuthRoutes({ gameEngine = null, worldGateway = null } = {}) {
       const isCurrentSession = targetSessionId === req.authSession?.id;
 
       if (isCurrentSession) {
-        disconnectUserFromWorld(req.authUser, { gameEngine, worldGateway, reason: 'session_revoke' });
+        disconnectUserFromWorld(req.authUser, {
+          gameEngine,
+          worldGateway,
+          reason: 'session_revoke',
+        });
         res.clearCookie(AUTH_COOKIE_NAME, getClearCookieOptions());
       }
 

@@ -138,15 +138,8 @@ function buildHouseInteriorMetrics(layout = HOUSE) {
     dividerLeftX,
     dividerRightX,
     dividerDoorWidth: 2.2,
-    dividerDoorCenters: [
-      southEdge + 2.8,
-      layout.position.z + 0.15,
-      northEdge - 3.6,
-    ],
-    wingPartitionZs: [
-      layout.position.z - 1.9,
-      layout.position.z + 3.2,
-    ],
+    dividerDoorCenters: [southEdge + 2.8, layout.position.z + 0.15, northEdge - 3.6],
+    wingPartitionZs: [layout.position.z - 1.9, layout.position.z + 3.2],
     wingDoorWidth: 1.9,
     leftWingDoorCenterX,
     rightWingDoorCenterX,
@@ -177,7 +170,7 @@ function buildHouseTowerElevators(layout = HOUSE) {
       topY: topPlatformY,
       innerSideX: 1,
       innerDoor: {
-        x: (layout.position.x - halfWidth + towerInsetX) + doorwayOffset,
+        x: layout.position.x - halfWidth + towerInsetX + doorwayOffset,
         y: 1.8,
         z: southEdge + towerInsetZ,
         width: 1.5,
@@ -186,15 +179,15 @@ function buildHouseTowerElevators(layout = HOUSE) {
         rotationY: Math.PI / 2,
       },
       callButton: {
-        x: (layout.position.x - halfWidth + towerInsetX) + callButtonOffset,
+        x: layout.position.x - halfWidth + towerInsetX + callButtonOffset,
         y: 0.78,
         z: southEdge + towerInsetZ + 0.16,
       },
       topSurface: createRect(
-        (layout.position.x - halfWidth + towerInsetX) - topPlatformHalfSize,
-        (layout.position.x - halfWidth + towerInsetX) + topPlatformHalfSize,
-        (southEdge + towerInsetZ) - topPlatformHalfSize,
-        (southEdge + towerInsetZ) + topPlatformHalfSize
+        layout.position.x - halfWidth + towerInsetX - topPlatformHalfSize,
+        layout.position.x - halfWidth + towerInsetX + topPlatformHalfSize,
+        southEdge + towerInsetZ - topPlatformHalfSize,
+        southEdge + towerInsetZ + topPlatformHalfSize
       ),
     },
     {
@@ -206,7 +199,7 @@ function buildHouseTowerElevators(layout = HOUSE) {
       topY: topPlatformY,
       innerSideX: -1,
       innerDoor: {
-        x: (layout.position.x + halfWidth - towerInsetX) - doorwayOffset,
+        x: layout.position.x + halfWidth - towerInsetX - doorwayOffset,
         y: 1.8,
         z: southEdge + towerInsetZ,
         width: 1.5,
@@ -215,15 +208,15 @@ function buildHouseTowerElevators(layout = HOUSE) {
         rotationY: Math.PI / 2,
       },
       callButton: {
-        x: (layout.position.x + halfWidth - towerInsetX) - callButtonOffset,
+        x: layout.position.x + halfWidth - towerInsetX - callButtonOffset,
         y: 0.78,
         z: southEdge + towerInsetZ + 0.16,
       },
       topSurface: createRect(
-        (layout.position.x + halfWidth - towerInsetX) - topPlatformHalfSize,
-        (layout.position.x + halfWidth - towerInsetX) + topPlatformHalfSize,
-        (southEdge + towerInsetZ) - topPlatformHalfSize,
-        (southEdge + towerInsetZ) + topPlatformHalfSize
+        layout.position.x + halfWidth - towerInsetX - topPlatformHalfSize,
+        layout.position.x + halfWidth - towerInsetX + topPlatformHalfSize,
+        southEdge + towerInsetZ - topPlatformHalfSize,
+        southEdge + towerInsetZ + topPlatformHalfSize
       ),
     },
   ];
@@ -253,61 +246,108 @@ function buildHouseRoyalStepSurfaces(layout = HOUSE) {
 
   return [
     {
-      ...createRect(layout.position.x - 6.8, layout.position.x + 6.8, throneZ - 3.25, throneZ - 1.75),
+      ...createRect(
+        layout.position.x - 6.8,
+        layout.position.x + 6.8,
+        throneZ - 3.25,
+        throneZ - 1.75
+      ),
       height: 0.34,
     },
     {
-      ...createRect(layout.position.x - 5.1, layout.position.x + 5.1, throneZ - 1.95, throneZ + 1.7),
+      ...createRect(
+        layout.position.x - 5.1,
+        layout.position.x + 5.1,
+        throneZ - 1.95,
+        throneZ + 1.7
+      ),
       height: 0.72,
     },
     {
-      ...createRect(layout.position.x - 1.38, layout.position.x + 1.38, throneZ + 0.3, throneZ + 1.58),
+      ...createRect(
+        layout.position.x - 1.38,
+        layout.position.x + 1.38,
+        throneZ + 0.3,
+        throneZ + 1.58
+      ),
       height: 1.22,
     },
     {
-      ...createRect(layout.position.x - 6.9, layout.position.x - 5.15, throneZ - 0.1, throneZ + 1.28),
+      ...createRect(
+        layout.position.x - 6.9,
+        layout.position.x - 5.15,
+        throneZ - 0.1,
+        throneZ + 1.28
+      ),
       height: 0.82,
     },
     {
-      ...createRect(layout.position.x + 5.15, layout.position.x + 6.9, throneZ - 0.1, throneZ + 1.28),
+      ...createRect(
+        layout.position.x + 5.15,
+        layout.position.x + 6.9,
+        throneZ - 0.1,
+        throneZ + 1.28
+      ),
       height: 0.82,
     },
     {
-      ...createRect(leftTableX - 1.05, leftTableX + 1.05, layout.position.z - 3.6, layout.position.z + 3.6),
+      ...createRect(
+        leftTableX - 1.05,
+        leftTableX + 1.05,
+        layout.position.z - 3.6,
+        layout.position.z + 3.6
+      ),
       height: 1.05,
     },
     {
-      ...createRect(rightTableX - 1.05, rightTableX + 1.05, layout.position.z - 3.6, layout.position.z + 3.6),
+      ...createRect(
+        rightTableX - 1.05,
+        rightTableX + 1.05,
+        layout.position.z - 3.6,
+        layout.position.z + 3.6
+      ),
       height: 1.05,
     },
     {
-      ...createRect(layout.position.x - 8.7, layout.position.x - 7.35, throneZ - 0.35, throneZ + 0.95),
+      ...createRect(
+        layout.position.x - 8.7,
+        layout.position.x - 7.35,
+        throneZ - 0.35,
+        throneZ + 0.95
+      ),
       height: 0.56,
     },
     {
-      ...createRect(layout.position.x + 7.35, layout.position.x + 8.7, throneZ - 0.35, throneZ + 0.95),
+      ...createRect(
+        layout.position.x + 7.35,
+        layout.position.x + 8.7,
+        throneZ - 0.35,
+        throneZ + 0.95
+      ),
       height: 0.56,
     },
     {
-      ...createRect(layout.position.x - 1.25, layout.position.x + 1.25, layout.position.z - 3.45, layout.position.z - 1.95),
+      ...createRect(
+        layout.position.x - 1.25,
+        layout.position.x + 1.25,
+        layout.position.z - 3.45,
+        layout.position.z - 1.95
+      ),
       height: 0.92,
     },
   ];
 }
 
 function buildHouseStepSurfaces(layout = HOUSE) {
-  return [
-    ...buildHouseFloorStepSurfaces(layout),
-    ...buildHouseRoyalStepSurfaces(layout),
-  ];
+  return [...buildHouseFloorStepSurfaces(layout), ...buildHouseRoyalStepSurfaces(layout)];
 }
 
 function buildWallSpans(rangeStart, rangeEnd, gaps = []) {
   const spans = [];
   const normalizedGaps = gaps
     .map((gap) => ({
-      start: Math.max(rangeStart, Number(gap?.center) - ((Number(gap?.width) || 0) / 2)),
-      end: Math.min(rangeEnd, Number(gap?.center) + ((Number(gap?.width) || 0) / 2)),
+      start: Math.max(rangeStart, Number(gap?.center) - (Number(gap?.width) || 0) / 2),
+      end: Math.min(rangeEnd, Number(gap?.center) + (Number(gap?.width) || 0) / 2),
     }))
     .filter((gap) => gap.end > gap.start)
     .sort((left, right) => left.start - right.start);
@@ -328,7 +368,7 @@ function buildWallSpans(rangeStart, rangeEnd, gaps = []) {
 }
 
 function addRectIfValid(rects, minX, maxX, minZ, maxZ) {
-  if ((maxX - minX) < 0.01 || (maxZ - minZ) < 0.01) {
+  if (maxX - minX < 0.01 || maxZ - minZ < 0.01) {
     return;
   }
 
@@ -389,11 +429,18 @@ function cloneSoccerFieldState(fieldState) {
     lineWidth: Number(fieldState?.lineWidth) || SOCCER_FIELD.lineWidth,
     ballRadius: Number(fieldState?.ballRadius) || SOCCER_FIELD.ballRadius,
     grandstandSide: fieldState?.grandstandSide === 'west' ? 'west' : SOCCER_FIELD.grandstandSide,
-    grandstandSidelineGap: Number(fieldState?.grandstandSidelineGap) || SOCCER_FIELD.grandstandSidelineGap,
-    grandstandLengthPadding: Number(fieldState?.grandstandLengthPadding) || SOCCER_FIELD.grandstandLengthPadding,
-    grandstandTiers: Math.max(1, Math.trunc(Number(fieldState?.grandstandTiers) || SOCCER_FIELD.grandstandTiers)),
-    grandstandTierHeight: Number(fieldState?.grandstandTierHeight) || SOCCER_FIELD.grandstandTierHeight,
-    grandstandTierDepth: Number(fieldState?.grandstandTierDepth) || SOCCER_FIELD.grandstandTierDepth,
+    grandstandSidelineGap:
+      Number(fieldState?.grandstandSidelineGap) || SOCCER_FIELD.grandstandSidelineGap,
+    grandstandLengthPadding:
+      Number(fieldState?.grandstandLengthPadding) || SOCCER_FIELD.grandstandLengthPadding,
+    grandstandTiers: Math.max(
+      1,
+      Math.trunc(Number(fieldState?.grandstandTiers) || SOCCER_FIELD.grandstandTiers)
+    ),
+    grandstandTierHeight:
+      Number(fieldState?.grandstandTierHeight) || SOCCER_FIELD.grandstandTierHeight,
+    grandstandTierDepth:
+      Number(fieldState?.grandstandTierDepth) || SOCCER_FIELD.grandstandTierDepth,
   };
 }
 
@@ -418,21 +465,24 @@ function cloneSoccerState(soccer) {
       position: clonePoint(soccer?.ball?.position),
       velocity: clonePoint(soccer?.ball?.velocity),
       radius: Number(soccer?.ball?.radius) || SOCCER_FIELD.ballRadius,
-      inGoal: soccer?.ball?.inGoal === 'north' || soccer?.ball?.inGoal === 'south'
-        ? soccer.ball.inGoal
-        : null,
-      lastTouchedByActorId: typeof soccer?.ball?.lastTouchedByActorId === 'string'
-        ? soccer.ball.lastTouchedByActorId
-        : '',
-      lastTouchedByActorName: typeof soccer?.ball?.lastTouchedByActorName === 'string'
-        ? soccer.ball.lastTouchedByActorName
-        : '',
-      possessedByActorId: typeof soccer?.ball?.possessedByActorId === 'string'
-        ? soccer.ball.possessedByActorId
-        : '',
-      possessedByActorName: typeof soccer?.ball?.possessedByActorName === 'string'
-        ? soccer.ball.possessedByActorName
-        : '',
+      inGoal:
+        soccer?.ball?.inGoal === 'north' || soccer?.ball?.inGoal === 'south'
+          ? soccer.ball.inGoal
+          : null,
+      lastTouchedByActorId:
+        typeof soccer?.ball?.lastTouchedByActorId === 'string'
+          ? soccer.ball.lastTouchedByActorId
+          : '',
+      lastTouchedByActorName:
+        typeof soccer?.ball?.lastTouchedByActorName === 'string'
+          ? soccer.ball.lastTouchedByActorName
+          : '',
+      possessedByActorId:
+        typeof soccer?.ball?.possessedByActorId === 'string' ? soccer.ball.possessedByActorId : '',
+      possessedByActorName:
+        typeof soccer?.ball?.possessedByActorName === 'string'
+          ? soccer.ball.possessedByActorName
+          : '',
     },
     restartAt: Number(soccer?.restartAt) || 0,
     lastGoalEvent: cloneSoccerGoalEvent(soccer?.lastGoalEvent),
@@ -445,21 +495,55 @@ function createHouseWallCollisionBoxes(layout) {
   const metrics = buildHouseInteriorMetrics(layout);
   const rects = [];
 
-  addRectIfValid(rects, metrics.westEdge, metrics.eastEdge, metrics.northEdge - wallThickness, metrics.northEdge);
-  addRectIfValid(rects, metrics.westEdge, metrics.westEdge + wallThickness, metrics.southEdge, metrics.northEdge);
-  addRectIfValid(rects, metrics.eastEdge - wallThickness, metrics.eastEdge, metrics.southEdge, metrics.northEdge);
-  addRectIfValid(rects, metrics.westEdge, layout.position.x - halfDoorWidth, metrics.southEdge, metrics.southEdge + wallThickness);
-  addRectIfValid(rects, layout.position.x + halfDoorWidth, metrics.eastEdge, metrics.southEdge, metrics.southEdge + wallThickness);
+  addRectIfValid(
+    rects,
+    metrics.westEdge,
+    metrics.eastEdge,
+    metrics.northEdge - wallThickness,
+    metrics.northEdge
+  );
+  addRectIfValid(
+    rects,
+    metrics.westEdge,
+    metrics.westEdge + wallThickness,
+    metrics.southEdge,
+    metrics.northEdge
+  );
+  addRectIfValid(
+    rects,
+    metrics.eastEdge - wallThickness,
+    metrics.eastEdge,
+    metrics.southEdge,
+    metrics.northEdge
+  );
+  addRectIfValid(
+    rects,
+    metrics.westEdge,
+    layout.position.x - halfDoorWidth,
+    metrics.southEdge,
+    metrics.southEdge + wallThickness
+  );
+  addRectIfValid(
+    rects,
+    layout.position.x + halfDoorWidth,
+    metrics.eastEdge,
+    metrics.southEdge,
+    metrics.southEdge + wallThickness
+  );
 
   return rects;
 }
 
 const HOUSE_WALL_COLLISION_BOXES = Object.freeze(createHouseWallCollisionBoxes(HOUSE));
 const HOUSE_TOWER_ELEVATORS = Object.freeze(buildHouseTowerElevators(HOUSE));
-const HOUSE_STEP_SURFACES = Object.freeze(buildHouseStepSurfaces(HOUSE).map((surface) => Object.freeze({
-  ...cloneRect(surface),
-  height: Number(surface?.height) || 0,
-})));
+const HOUSE_STEP_SURFACES = Object.freeze(
+  buildHouseStepSurfaces(HOUSE).map((surface) =>
+    Object.freeze({
+      ...cloneRect(surface),
+      height: Number(surface?.height) || 0,
+    })
+  )
+);
 
 function getSoccerGrandstandLayout(fieldState = SOCCER_FIELD) {
   const centerX = Number(fieldState?.position?.x) || 0;
@@ -468,18 +552,23 @@ function getSoccerGrandstandLayout(fieldState = SOCCER_FIELD) {
   const fieldDepth = Number(fieldState?.depth) || SOCCER_FIELD.depth;
   const side = fieldState?.grandstandSide === 'west' ? 'west' : SOCCER_FIELD.grandstandSide;
   const sideMultiplier = side === 'west' ? -1 : 1;
-  const sidelineGap = Number(fieldState?.grandstandSidelineGap) || SOCCER_FIELD.grandstandSidelineGap;
-  const lengthPadding = Number(fieldState?.grandstandLengthPadding) || SOCCER_FIELD.grandstandLengthPadding;
-  const tiers = Math.max(1, Math.trunc(Number(fieldState?.grandstandTiers) || SOCCER_FIELD.grandstandTiers));
+  const sidelineGap =
+    Number(fieldState?.grandstandSidelineGap) || SOCCER_FIELD.grandstandSidelineGap;
+  const lengthPadding =
+    Number(fieldState?.grandstandLengthPadding) || SOCCER_FIELD.grandstandLengthPadding;
+  const tiers = Math.max(
+    1,
+    Math.trunc(Number(fieldState?.grandstandTiers) || SOCCER_FIELD.grandstandTiers)
+  );
   const tierHeight = Number(fieldState?.grandstandTierHeight) || SOCCER_FIELD.grandstandTierHeight;
   const tierDepth = Number(fieldState?.grandstandTierDepth) || SOCCER_FIELD.grandstandTierDepth;
-  const depth = (tiers * tierDepth) + 0.6;
+  const depth = tiers * tierDepth + 0.6;
   const length = fieldDepth + lengthPadding;
-  const frontX = centerX + sideMultiplier * ((fieldWidth / 2) + sidelineGap);
+  const frontX = centerX + sideMultiplier * (fieldWidth / 2 + sidelineGap);
   const backX = frontX + sideMultiplier * depth;
 
   return {
-    centerX: frontX + (sideMultiplier * (depth / 2)),
+    centerX: frontX + sideMultiplier * (depth / 2),
     centerZ,
     depth,
     length,
@@ -487,8 +576,8 @@ function getSoccerGrandstandLayout(fieldState = SOCCER_FIELD) {
     backX,
     minX: Math.min(frontX, backX),
     maxX: Math.max(frontX, backX),
-    minZ: centerZ - (length / 2),
-    maxZ: centerZ + (length / 2),
+    minZ: centerZ - length / 2,
+    maxZ: centerZ + length / 2,
     side,
     sideMultiplier,
     sidelineGap,
@@ -505,23 +594,13 @@ function createSoccerGrandstandCollisionBoxes(fieldState = SOCCER_FIELD) {
 
   return [
     createRect(
-      Math.min(layout.backX, layout.backX + (layout.sideMultiplier * backWallThickness)),
-      Math.max(layout.backX, layout.backX + (layout.sideMultiplier * backWallThickness)),
+      Math.min(layout.backX, layout.backX + layout.sideMultiplier * backWallThickness),
+      Math.max(layout.backX, layout.backX + layout.sideMultiplier * backWallThickness),
       layout.minZ - 0.08,
       layout.maxZ + 0.08
     ),
-    createRect(
-      layout.minX - 0.08,
-      layout.maxX + 0.08,
-      layout.minZ - endWallThickness,
-      layout.minZ
-    ),
-    createRect(
-      layout.minX - 0.08,
-      layout.maxX + 0.08,
-      layout.maxZ,
-      layout.maxZ + endWallThickness
-    ),
+    createRect(layout.minX - 0.08, layout.maxX + 0.08, layout.minZ - endWallThickness, layout.minZ),
+    createRect(layout.minX - 0.08, layout.maxX + 0.08, layout.maxZ, layout.maxZ + endWallThickness),
   ];
 }
 
@@ -529,8 +608,8 @@ function getSoccerGrandstandSurfaceHeight(fieldState = SOCCER_FIELD, position) {
   const layout = getSoccerGrandstandLayout(fieldState);
 
   for (let tierIndex = layout.tiers - 1; tierIndex >= 0; tierIndex -= 1) {
-    const tierStartX = layout.frontX + (layout.sideMultiplier * (tierIndex * layout.tierDepth));
-    const tierEndX = layout.frontX + (layout.sideMultiplier * ((tierIndex + 1) * layout.tierDepth));
+    const tierStartX = layout.frontX + layout.sideMultiplier * (tierIndex * layout.tierDepth);
+    const tierEndX = layout.frontX + layout.sideMultiplier * ((tierIndex + 1) * layout.tierDepth);
     const tierRect = createRect(
       Math.min(tierStartX, tierEndX),
       Math.max(tierStartX, tierEndX),
@@ -547,9 +626,7 @@ function getSoccerGrandstandSurfaceHeight(fieldState = SOCCER_FIELD, position) {
 }
 
 function getHouseStructureSurfaceHeight(houseState = HOUSE, position) {
-  const surfaces = houseState === HOUSE
-    ? HOUSE_STEP_SURFACES
-    : buildHouseStepSurfaces(houseState);
+  const surfaces = houseState === HOUSE ? HOUSE_STEP_SURFACES : buildHouseStepSurfaces(houseState);
 
   let resolvedHeight = 0;
   for (let index = 0; index < surfaces.length; index += 1) {
@@ -564,7 +641,9 @@ function getHouseStructureSurfaceHeight(houseState = HOUSE, position) {
 
 function getWorldCollisionBoxes(worldState) {
   const houseCollisionBoxes = worldState?.house?.walls || HOUSE_WALL_COLLISION_BOXES;
-  const grandstandCollisionBoxes = createSoccerGrandstandCollisionBoxes(worldState?.soccer?.field || SOCCER_FIELD);
+  const grandstandCollisionBoxes = createSoccerGrandstandCollisionBoxes(
+    worldState?.soccer?.field || SOCCER_FIELD
+  );
   return [...houseCollisionBoxes, ...grandstandCollisionBoxes];
 }
 
@@ -593,21 +672,21 @@ function getWorldSurfaceHeight(worldState, position) {
 function getHouseTowerElevators(houseState = HOUSE) {
   return houseState === HOUSE
     ? HOUSE_TOWER_ELEVATORS.map((elevator) => ({
-      ...elevator,
-      innerDoor: {
-        ...elevator.innerDoor,
-      },
-      callButton: clonePoint(elevator.callButton),
-      topSurface: cloneRect(elevator.topSurface),
-    }))
+        ...elevator,
+        innerDoor: {
+          ...elevator.innerDoor,
+        },
+        callButton: clonePoint(elevator.callButton),
+        topSurface: cloneRect(elevator.topSurface),
+      }))
     : buildHouseTowerElevators(houseState).map((elevator) => ({
-      ...elevator,
-      innerDoor: {
-        ...elevator.innerDoor,
-      },
-      callButton: clonePoint(elevator.callButton),
-      topSurface: cloneRect(elevator.topSurface),
-    }));
+        ...elevator,
+        innerDoor: {
+          ...elevator.innerDoor,
+        },
+        callButton: clonePoint(elevator.callButton),
+        topSurface: cloneRect(elevator.topSurface),
+      }));
 }
 
 function isPositionInsideRect(position, rect, padding = 0) {
@@ -776,26 +855,22 @@ function getPublicDynamicWorldState(worldState) {
     droppedApples: Array.isArray(worldState.droppedApples)
       ? worldState.droppedApples.map(cloneDroppedApple)
       : [],
-    bows: Array.isArray(worldState.bows)
-      ? worldState.bows.map(cloneBowPickup)
-      : [],
-    swords: Array.isArray(worldState.swords)
-      ? worldState.swords.map(cloneSwordPickup)
-      : [],
-    arrows: Array.isArray(worldState.arrows)
-      ? worldState.arrows.map(cloneArrowProjectile)
-      : [],
+    bows: Array.isArray(worldState.bows) ? worldState.bows.map(cloneBowPickup) : [],
+    swords: Array.isArray(worldState.swords) ? worldState.swords.map(cloneSwordPickup) : [],
+    arrows: Array.isArray(worldState.arrows) ? worldState.arrows.map(cloneArrowProjectile) : [],
     soccer: {
       ball: soccer.ball,
       restartAt: soccer.restartAt,
       lastGoalEvent: soccer.lastGoalEvent,
     },
     elevators: Array.isArray(worldState.elevators)
-      ? worldState.elevators.map((elevator) => ({ id: elevator.id, y: elevator.y, state: elevator.state }))
+      ? worldState.elevators.map((elevator) => ({
+          id: elevator.id,
+          y: elevator.y,
+          state: elevator.state,
+        }))
       : [],
-    graves: Array.isArray(worldState.graves)
-      ? worldState.graves.map(cloneGrave)
-      : [],
+    graves: Array.isArray(worldState.graves) ? worldState.graves.map(cloneGrave) : [],
   };
 }
 

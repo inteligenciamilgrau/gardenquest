@@ -5,7 +5,9 @@ const WORLD_COMMAND_BUS_CHANNEL = 'world_command_bus';
 const ADMIN_RETRYABLE_WORLD_COMMAND_STATUSES = Object.freeze(['dead_letter', 'error']);
 
 function normalizeCommandType(value) {
-  const normalized = String(value || '').trim().toLowerCase();
+  const normalized = String(value || '')
+    .trim()
+    .toLowerCase();
   return normalized || 'unknown';
 }
 
@@ -50,19 +52,15 @@ function mapRuntimeEventRow(row) {
   };
 }
 
-
 async function publishNotification(client, channel, payload = {}) {
-  await client.query(
-    `SELECT pg_notify($1, $2)`,
-    [
+  await client.query(`SELECT pg_notify($1, $2)`, [
+    channel,
+    JSON.stringify({
+      ...(payload || {}),
       channel,
-      JSON.stringify({
-        ...(payload || {}),
-        channel,
-        emittedAt: new Date().toISOString(),
-      }),
-    ]
-  );
+      emittedAt: new Date().toISOString(),
+    }),
+  ]);
 }
 
 async function ensureWorldRuntimeTables() {
@@ -265,7 +263,9 @@ async function upsertWorldRuntimeSnapshot({
           `,
           [
             realmId,
-            String(runtimeEvent.eventType || 'world_event').trim().toLowerCase(),
+            String(runtimeEvent.eventType || 'world_event')
+              .trim()
+              .toLowerCase(),
             normalizeVisibility(runtimeEvent.visibility),
             runtimeEvent.actorId || null,
             runtimeEvent.actorType ? normalizeActorType(runtimeEvent.actorType) : null,
@@ -359,7 +359,12 @@ async function getActorRuntimeSnapshot(realmId, actorId) {
   return result.rows[0];
 }
 
-async function listWorldRuntimeEvents({ realmId, sinceSeq = 0, limit = 100, visibility = 'public' }) {
+async function listWorldRuntimeEvents({
+  realmId,
+  sinceSeq = 0,
+  limit = 100,
+  visibility = 'public',
+}) {
   const normalizedLimit = Math.max(1, Math.min(250, Math.trunc(limit) || 100));
   const result = await getPool().query(
     `
@@ -380,7 +385,12 @@ async function listWorldRuntimeEvents({ realmId, sinceSeq = 0, limit = 100, visi
       ORDER BY seq ASC
       LIMIT $4
     `,
-    [realmId, Math.max(0, Math.trunc(sinceSeq) || 0), visibility === 'all' ? 'all' : normalizeVisibility(visibility), normalizedLimit]
+    [
+      realmId,
+      Math.max(0, Math.trunc(sinceSeq) || 0),
+      visibility === 'all' ? 'all' : normalizeVisibility(visibility),
+      normalizedLimit,
+    ]
   );
 
   return result.rows.map(mapRuntimeEventRow);
@@ -483,7 +493,12 @@ async function enqueueWorldCommand({
   return inserted;
 }
 
-async function claimPendingWorldCommands({ realmId, claimedBy, limit = 50, staleAfterSeconds = 30 }) {
+async function claimPendingWorldCommands({
+  realmId,
+  claimedBy,
+  limit = 50,
+  staleAfterSeconds = 30,
+}) {
   const normalizedLimit = Math.max(1, Math.min(200, Math.trunc(limit) || 50));
   const result = await getPool().query(
     `
@@ -547,7 +562,13 @@ async function completeWorldCommand({ id, claimedBy, status = 'done', resultJson
   );
 }
 
-async function requeueWorldCommand({ id, claimedBy, errorMessage = 'worker_error', errorCode = 'worker_error', delayMs = 1500 }) {
+async function requeueWorldCommand({
+  id,
+  claimedBy,
+  errorMessage = 'worker_error',
+  errorCode = 'worker_error',
+  delayMs = 1500,
+}) {
   const normalizedDelayMs = Math.max(250, Math.min(30000, Math.trunc(delayMs) || 1500));
   await getPool().query(
     `
@@ -563,10 +584,15 @@ async function requeueWorldCommand({ id, claimedBy, errorMessage = 'worker_error
       WHERE id = $1
         AND claimed_by = $2
     `,
-    [id, claimedBy, normalizedDelayMs, String(errorMessage || 'worker_error'), String(errorCode || 'worker_error')]
+    [
+      id,
+      claimedBy,
+      normalizedDelayMs,
+      String(errorMessage || 'worker_error'),
+      String(errorCode || 'worker_error'),
+    ]
   );
 }
-
 
 async function listWorldCommandDeadLetters({ realmId, limit = 100 }) {
   const normalizedLimit = Math.max(1, Math.min(200, Math.trunc(limit) || 100));

@@ -1,5 +1,8 @@
 const ERROR_CATALOG = Object.freeze({
-  invalid_session: Object.freeze({ statusCode: 401, publicMessage: 'Invalid, expired, or revoked session' }),
+  invalid_session: Object.freeze({
+    statusCode: 401,
+    publicMessage: 'Invalid, expired, or revoked session',
+  }),
   forbidden: Object.freeze({ statusCode: 403, publicMessage: 'Forbidden' }),
   validation_failed: Object.freeze({ statusCode: 400, publicMessage: 'Validation failed' }),
   not_found: Object.freeze({ statusCode: 404, publicMessage: 'Not found' }),
@@ -7,16 +10,15 @@ const ERROR_CATALOG = Object.freeze({
 });
 
 class AppError extends Error {
-  constructor(code = 'internal_error', {
-    statusCode,
-    publicMessage,
-    details = null,
-    cause = null,
-  } = {}) {
+  constructor(
+    code = 'internal_error',
+    { statusCode, publicMessage, details = null, cause = null } = {}
+  ) {
     const catalogEntry = ERROR_CATALOG[code] || ERROR_CATALOG.internal_error;
-    const effectivePublicMessage = typeof publicMessage === 'string' && publicMessage.trim()
-      ? publicMessage.trim()
-      : catalogEntry.publicMessage;
+    const effectivePublicMessage =
+      typeof publicMessage === 'string' && publicMessage.trim()
+        ? publicMessage.trim()
+        : catalogEntry.publicMessage;
 
     super(effectivePublicMessage);
     this.name = 'AppError';
@@ -39,10 +41,12 @@ function normalizeToAppError(error, { fallbackCode = 'internal_error' } = {}) {
 
   const fallback = ERROR_CATALOG[fallbackCode] || ERROR_CATALOG.internal_error;
   const rawStatus = Number(error?.statusCode || error?.status || fallback.statusCode);
-  const statusCode = Number.isInteger(rawStatus) && rawStatus >= 400 && rawStatus <= 599
-    ? rawStatus
-    : fallback.statusCode;
-  const hasPublicMessage = typeof error?.publicMessage === 'string' && error.publicMessage.trim().length > 0;
+  const statusCode =
+    Number.isInteger(rawStatus) && rawStatus >= 400 && rawStatus <= 599
+      ? rawStatus
+      : fallback.statusCode;
+  const hasPublicMessage =
+    typeof error?.publicMessage === 'string' && error.publicMessage.trim().length > 0;
 
   return new AppError(fallbackCode, {
     statusCode,
@@ -52,10 +56,7 @@ function normalizeToAppError(error, { fallbackCode = 'internal_error' } = {}) {
   });
 }
 
-function buildErrorResponse(error, {
-  fallbackCode = 'internal_error',
-  correlationId = null,
-} = {}) {
+function buildErrorResponse(error, { fallbackCode = 'internal_error', correlationId = null } = {}) {
   const appError = normalizeToAppError(error, { fallbackCode });
 
   return {

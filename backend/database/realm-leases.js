@@ -114,7 +114,13 @@ async function acquireOrRenewRealmLease({
         expires_at AS "expiresAt",
         meta_json AS "metaJson"
     `,
-    [normalizedRealmId, ownerInstanceId, proposedLeaseToken, nextExpiry.toISOString(), JSON.stringify(metaJson || {})]
+    [
+      normalizedRealmId,
+      ownerInstanceId,
+      proposedLeaseToken,
+      nextExpiry.toISOString(),
+      JSON.stringify(metaJson || {}),
+    ]
   );
 
   return mapLeaseRow(result.rows[0]);

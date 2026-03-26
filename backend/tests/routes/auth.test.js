@@ -20,9 +20,7 @@ function createApp() {
 test('GET /auth/google redirects to OAuth provider and sets state cookie', async () => {
   const app = createApp();
 
-  const response = await request(app)
-    .get('/auth/google')
-    .query({ redirect: '/hub.html' });
+  const response = await request(app).get('/auth/google').query({ redirect: '/hub.html' });
 
   assert.equal(response.status, 302);
   assert.match(response.headers.location || '', /accounts\.google\.com/);

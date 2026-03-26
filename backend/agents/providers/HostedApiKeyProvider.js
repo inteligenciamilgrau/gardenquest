@@ -48,7 +48,10 @@ class HostedApiKeyProvider extends AgentRuntime {
             type: 'object',
             additionalProperties: false,
             properties: {
-              action: { type: 'string', enum: ['wait', 'move_to', 'drink_water', 'pick_fruit', 'eat_fruit'] },
+              action: {
+                type: 'string',
+                enum: ['wait', 'move_to', 'drink_water', 'pick_fruit', 'eat_fruit'],
+              },
               targetId: { type: ['string', 'null'] },
               speech: { type: ['string', 'null'], maxLength: policy.speechMaxChars || 140 },
             },
@@ -121,20 +124,24 @@ class HostedApiKeyProvider extends AgentRuntime {
     const maxAttempts = 3;
 
     const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-    const isRetryableStatus = (statusCode) => [408, 409, 429, 500, 502, 503, 504].includes(statusCode);
+    const isRetryableStatus = (statusCode) =>
+      [408, 409, 429, 500, 502, 503, 504].includes(statusCode);
     const isRetryableError = (error) => {
       const code = String(error?.code || '').toUpperCase();
-      return code === 'UND_ERR_CONNECT_TIMEOUT'
-        || code === 'UND_ERR_HEADERS_TIMEOUT'
-        || code === 'UND_ERR_BODY_TIMEOUT'
-        || code === 'ECONNRESET'
-        || code === 'ECONNREFUSED'
-        || code === 'EAI_AGAIN'
-        || code === 'ETIMEDOUT'
-        || code === 'ENOTFOUND';
+      return (
+        code === 'UND_ERR_CONNECT_TIMEOUT' ||
+        code === 'UND_ERR_HEADERS_TIMEOUT' ||
+        code === 'UND_ERR_BODY_TIMEOUT' ||
+        code === 'ECONNRESET' ||
+        code === 'ECONNREFUSED' ||
+        code === 'EAI_AGAIN' ||
+        code === 'ETIMEDOUT' ||
+        code === 'ENOTFOUND'
+      );
     };
 
-    const computeDelay = (attempt) => Math.min(2000, 220 * (2 ** (attempt - 1))) + Math.floor(Math.random() * 120);
+    const computeDelay = (attempt) =>
+      Math.min(2000, 220 * 2 ** (attempt - 1)) + Math.floor(Math.random() * 120);
 
     return (async () => {
       let lastError = null;

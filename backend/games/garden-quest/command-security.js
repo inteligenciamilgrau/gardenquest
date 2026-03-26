@@ -25,7 +25,8 @@ const DANGEROUS_STRING_RULES = [
     description: 'contains javascript protocol pattern',
   },
   {
-    pattern: /\b(?:union\s+select|drop\s+table|insert\s+into|delete\s+from|update\s+\w+\s+set|alter\s+table)\b/i,
+    pattern:
+      /\b(?:union\s+select|drop\s+table|insert\s+into|delete\s+from|update\s+\w+\s+set|alter\s+table)\b/i,
     description: 'contains SQL injection pattern',
   },
   {
@@ -129,9 +130,10 @@ function validatePlayerCommandBody(body, { chatMaxChars }) {
   walkForSuspiciousStrings(body, 'body', suspiciousIssues);
 
   const type = typeof body.type === 'string' ? body.type.trim() : '';
-  const payload = body.payload && typeof body.payload === 'object' && !Array.isArray(body.payload)
-    ? body.payload
-    : {};
+  const payload =
+    body.payload && typeof body.payload === 'object' && !Array.isArray(body.payload)
+      ? body.payload
+      : {};
 
   let normalizedCommand = null;
 
@@ -166,9 +168,8 @@ function validatePlayerCommandBody(body, { chatMaxChars }) {
       };
       break;
     case 'chat': {
-      const message = typeof payload.message === 'string'
-        ? payload.message.replace(/\s+/g, ' ').trim()
-        : '';
+      const message =
+        typeof payload.message === 'string' ? payload.message.replace(/\s+/g, ' ').trim() : '';
 
       if (!message) {
         validationErrors.push('Chat message is required.');
@@ -193,12 +194,10 @@ function validatePlayerCommandBody(body, { chatMaxChars }) {
       break;
     }
     case 'update_profile': {
-      const nickname = typeof payload.nickname === 'string'
-        ? payload.nickname.replace(/\s+/g, ' ').trim()
-        : '';
-      const outfitColor = typeof payload.outfitColor === 'string'
-        ? payload.outfitColor.trim().toLowerCase()
-        : '';
+      const nickname =
+        typeof payload.nickname === 'string' ? payload.nickname.replace(/\s+/g, ' ').trim() : '';
+      const outfitColor =
+        typeof payload.outfitColor === 'string' ? payload.outfitColor.trim().toLowerCase() : '';
 
       if (!nickname) {
         validationErrors.push('Nickname is required.');
@@ -233,7 +232,8 @@ function validatePlayerCommandBody(body, { chatMaxChars }) {
   }
 
   return {
-    ok: suspiciousIssues.length === 0 && validationErrors.length === 0 && Boolean(normalizedCommand),
+    ok:
+      suspiciousIssues.length === 0 && validationErrors.length === 0 && Boolean(normalizedCommand),
     suspiciousIssues,
     validationErrors,
     normalizedCommand,

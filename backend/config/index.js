@@ -5,13 +5,17 @@ const dotenv = require('dotenv');
 const projectRoot = path.join(__dirname, '../..');
 
 function normalizeNodeEnv(value) {
-  return String(value || '').trim().toLowerCase() === 'production'
+  return String(value || '')
+    .trim()
+    .toLowerCase() === 'production'
     ? 'production'
     : 'development';
 }
 
 function normalizeAppEnv(value, fallbackNodeEnv = 'development') {
-  const normalized = String(value || '').trim().toLowerCase();
+  const normalized = String(value || '')
+    .trim()
+    .toLowerCase();
 
   if (normalized === 'local' || normalized === 'staging' || normalized === 'production') {
     return normalized;
@@ -29,9 +33,7 @@ function resolveEnvFilePath(fileName) {
     return null;
   }
 
-  return path.isAbsolute(fileName)
-    ? fileName
-    : path.join(projectRoot, fileName);
+  return path.isAbsolute(fileName) ? fileName : path.join(projectRoot, fileName);
 }
 
 function parseEnvFile(filePath) {
@@ -101,11 +103,7 @@ function loadEnvironmentFiles() {
       : resolveEnvFilePath(`.env.${discoveredAppEnv}`);
 
   const loadedEnvFiles = applyEnvFiles(
-    dedupePreserveOrder([
-      baseEnvPath,
-      appEnvPath,
-      explicitEnvPath,
-    ])
+    dedupePreserveOrder([baseEnvPath, appEnvPath, explicitEnvPath])
   );
 
   const nodeEnv = normalizeNodeEnv(process.env.NODE_ENV || discoveredNodeEnv);
@@ -172,7 +170,10 @@ function assertLocalUrl(name, parsedUrl) {
     return;
   }
 
-  if (!['http:', 'https:'].includes(parsedUrl.protocol) || !isLoopbackHostname(parsedUrl.hostname)) {
+  if (
+    !['http:', 'https:'].includes(parsedUrl.protocol) ||
+    !isLoopbackHostname(parsedUrl.hostname)
+  ) {
     throw new Error(`${name} must use localhost, 127.0.0.1, or ::1 in APP_ENV=local`);
   }
 }
@@ -210,8 +211,8 @@ function validateCookieDomain(cookieDomain, frontendUrl, appEnv) {
 
   const frontendHostname = normalizeHostname(frontendUrl.hostname);
   if (
-    normalizedCookieDomain !== frontendHostname
-    && !frontendHostname.endsWith(`.${normalizedCookieDomain}`)
+    normalizedCookieDomain !== frontendHostname &&
+    !frontendHostname.endsWith(`.${normalizedCookieDomain}`)
   ) {
     throw new Error('COOKIE_DOMAIN must match FRONTEND_URL or be a parent domain of it');
   }
@@ -313,9 +314,7 @@ function readStringListEnv(name) {
 }
 
 const cookieSecure =
-  process.env.COOKIE_SECURE != null
-    ? process.env.COOKIE_SECURE === 'true'
-    : appEnv !== 'local';
+  process.env.COOKIE_SECURE != null ? process.env.COOKIE_SECURE === 'true' : appEnv !== 'local';
 
 const config = {
   APP_ENV: appEnv,
@@ -348,7 +347,10 @@ const config = {
   AUTH_RATE_LIMIT_MAX: readIntegerEnv('AUTH_RATE_LIMIT_MAX', 20),
   ADMIN_RATE_LIMIT_WINDOW_MS: readIntegerEnv('ADMIN_RATE_LIMIT_WINDOW_MS', 15 * 60 * 1000),
   ADMIN_RATE_LIMIT_MAX: readIntegerEnv('ADMIN_RATE_LIMIT_MAX', 10),
-  AI_PUBLIC_STATE_RATE_LIMIT_WINDOW_MS: readIntegerEnv('AI_PUBLIC_STATE_RATE_LIMIT_WINDOW_MS', 10 * 1000),
+  AI_PUBLIC_STATE_RATE_LIMIT_WINDOW_MS: readIntegerEnv(
+    'AI_PUBLIC_STATE_RATE_LIMIT_WINDOW_MS',
+    10 * 1000
+  ),
   AI_PUBLIC_STATE_RATE_LIMIT_MAX: readIntegerEnv('AI_PUBLIC_STATE_RATE_LIMIT_MAX', 90),
   AI_COMMAND_RATE_LIMIT_WINDOW_MS: readIntegerEnv('AI_COMMAND_RATE_LIMIT_WINDOW_MS', 10 * 1000),
   AI_COMMAND_RATE_LIMIT_MAX: readIntegerEnv('AI_COMMAND_RATE_LIMIT_MAX', 300),
@@ -361,15 +363,16 @@ const config = {
   ADMIN_GOOGLE_EMAILS: readEmailListEnv('ADMIN_GOOGLE_EMAILS'),
 
   SUPABASE_DB_URL: readEnv('SUPABASE_DB_URL'),
-  SUPABASE_DB_SSL:
-    readBooleanEnv('SUPABASE_DB_SSL', appEnv !== 'local'),
+  SUPABASE_DB_SSL: readBooleanEnv('SUPABASE_DB_SSL', appEnv !== 'local'),
   SUPABASE_DB_SSL_CA_PATH: readEnv('SUPABASE_DB_SSL_CA_PATH'),
 
   OPENAI_API_KEY: readEnv('OPENAI_API_KEY'),
   OPENAI_BASE_URL: readEnv('OPENAI_BASE_URL'),
   OPENAI_MODEL: readEnv('OPENAI_MODEL', { defaultValue: 'gpt-5.4-nano' }),
   OPENAI_API_TIMEOUT_MS: readIntegerEnv('OPENAI_API_TIMEOUT_MS', 10000),
-  OPENAI_NPC_SYSTEM_PROMPT_VERSION: readEnv('OPENAI_NPC_SYSTEM_PROMPT_VERSION', { defaultValue: 'v1' }),
+  OPENAI_NPC_SYSTEM_PROMPT_VERSION: readEnv('OPENAI_NPC_SYSTEM_PROMPT_VERSION', {
+    defaultValue: 'v1',
+  }),
   OPENAI_NPC_SYSTEM_PROMPT_FILE: readEnv('OPENAI_NPC_SYSTEM_PROMPT_FILE'),
   OPENAI_PROJECT_ID: readEnv('OPENAI_PROJECT_ID'),
   OPENAI_ORGANIZATION_ID: readEnv('OPENAI_ORGANIZATION_ID'),
@@ -397,7 +400,7 @@ const config = {
   // V6 — API / Worker Split
   REALM_ID: readEnv('REALM_ID', { defaultValue: 'gardenquest-world-01' }),
   WORLD_COMMAND_POLL_MS: readIntegerEnv('WORLD_COMMAND_POLL_MS', 500),
-  WORLD_SNAPSHOT_FLUSH_MS: readIntegerEnv('WORLD_SNAPSHOT_FLUSH_MS', 1000),
+  WORLD_SNAPSHOT_FLUSH_MS: readIntegerEnv('WORLD_SNAPSHOT_FLUSH_MS', 200),
   WORLD_COMMAND_BATCH_SIZE: readIntegerEnv('WORLD_COMMAND_BATCH_SIZE', 50),
   WORLD_RUNTIME_SNAPSHOT_TTL_MS: readIntegerEnv('WORLD_RUNTIME_SNAPSHOT_TTL_MS', 15000),
   AGENT_WORLD_REQUIRE_LEASE: readBooleanEnv('AGENT_WORLD_REQUIRE_LEASE', false),
@@ -411,8 +414,14 @@ const config = {
   WORLD_EVENT_STREAM_TOUCH_MS: readIntegerEnv('WORLD_EVENT_STREAM_TOUCH_MS', 10000),
   WORLD_EVENT_STREAM_SNAPSHOT_EVERY: readIntegerEnv('WORLD_EVENT_STREAM_SNAPSHOT_EVERY', 1),
   WORLD_EVENT_STREAM_MAX_SUBSCRIBERS: readIntegerEnv('WORLD_EVENT_STREAM_MAX_SUBSCRIBERS', 300),
-  WORLD_EVENT_STREAM_MAX_PUBLIC_SUBSCRIBERS: readIntegerEnv('WORLD_EVENT_STREAM_MAX_PUBLIC_SUBSCRIBERS', 220),
-  WORLD_EVENT_STREAM_MAX_PLAYER_SUBSCRIBERS: readIntegerEnv('WORLD_EVENT_STREAM_MAX_PLAYER_SUBSCRIBERS', 220),
+  WORLD_EVENT_STREAM_MAX_PUBLIC_SUBSCRIBERS: readIntegerEnv(
+    'WORLD_EVENT_STREAM_MAX_PUBLIC_SUBSCRIBERS',
+    220
+  ),
+  WORLD_EVENT_STREAM_MAX_PLAYER_SUBSCRIBERS: readIntegerEnv(
+    'WORLD_EVENT_STREAM_MAX_PLAYER_SUBSCRIBERS',
+    220
+  ),
   WORLD_EVENT_STREAM_FALLBACK_POLL_MS: readIntegerEnv('WORLD_EVENT_STREAM_FALLBACK_POLL_MS', 5000),
 
   // V9 — Postgres Notify Bus
@@ -421,10 +430,16 @@ const config = {
 
   // V10 — Governance
   AGENT_DEFAULT_DAILY_RUN_BUDGET: readIntegerEnv('AGENT_DEFAULT_DAILY_RUN_BUDGET', 5000),
-  AGENT_DEFAULT_MIN_DECISION_INTERVAL_MS: readIntegerEnv('AGENT_DEFAULT_MIN_DECISION_INTERVAL_MS', 2000),
+  AGENT_DEFAULT_MIN_DECISION_INTERVAL_MS: readIntegerEnv(
+    'AGENT_DEFAULT_MIN_DECISION_INTERVAL_MS',
+    2000
+  ),
   AGENT_CIRCUIT_FAILURE_THRESHOLD: readIntegerEnv('AGENT_CIRCUIT_FAILURE_THRESHOLD', 5),
   AGENT_CIRCUIT_COOLDOWN_MS: readIntegerEnv('AGENT_CIRCUIT_COOLDOWN_MS', 30000),
-  AGENT_PROVIDER_CIRCUIT_FAILURE_THRESHOLD: readIntegerEnv('AGENT_PROVIDER_CIRCUIT_FAILURE_THRESHOLD', 10),
+  AGENT_PROVIDER_CIRCUIT_FAILURE_THRESHOLD: readIntegerEnv(
+    'AGENT_PROVIDER_CIRCUIT_FAILURE_THRESHOLD',
+    10
+  ),
   AGENT_PROVIDER_CIRCUIT_COOLDOWN_MS: readIntegerEnv('AGENT_PROVIDER_CIRCUIT_COOLDOWN_MS', 60000),
 
   // V11 — Moderation
@@ -432,8 +447,14 @@ const config = {
   AGENT_SPEECH_MODERATION_ENABLED: readBooleanEnv('AGENT_SPEECH_MODERATION_ENABLED', true),
   AGENT_SPEECH_ALLOW_URLS: readBooleanEnv('AGENT_SPEECH_ALLOW_URLS', false),
   AGENT_SPEECH_BLOCKLIST: readStringListEnv('AGENT_SPEECH_BLOCKLIST'),
-  AGENT_ENDPOINT_QUARANTINE_FAILURE_THRESHOLD: readIntegerEnv('AGENT_ENDPOINT_QUARANTINE_FAILURE_THRESHOLD', 6),
-  AGENT_ENDPOINT_QUARANTINE_SUSPICIOUS_THRESHOLD: readIntegerEnv('AGENT_ENDPOINT_QUARANTINE_SUSPICIOUS_THRESHOLD', 2),
+  AGENT_ENDPOINT_QUARANTINE_FAILURE_THRESHOLD: readIntegerEnv(
+    'AGENT_ENDPOINT_QUARANTINE_FAILURE_THRESHOLD',
+    6
+  ),
+  AGENT_ENDPOINT_QUARANTINE_SUSPICIOUS_THRESHOLD: readIntegerEnv(
+    'AGENT_ENDPOINT_QUARANTINE_SUSPICIOUS_THRESHOLD',
+    2
+  ),
   AGENT_ENDPOINT_QUARANTINE_MS: readIntegerEnv('AGENT_ENDPOINT_QUARANTINE_MS', 900000),
   WORLD_COMMAND_MAX_ATTEMPTS: readIntegerEnv('WORLD_COMMAND_MAX_ATTEMPTS', 5),
   WORLD_COMMAND_RETRY_BASE_MS: readIntegerEnv('WORLD_COMMAND_RETRY_BASE_MS', 1200),
@@ -444,7 +465,10 @@ const config = {
 
 function validateRuntimeConfig(currentConfig) {
   const frontendUrl = parseAbsoluteUrl('FRONTEND_URL', currentConfig.FRONTEND_URL);
-  const googleRedirectUrl = parseAbsoluteUrl('GOOGLE_REDIRECT_URI', currentConfig.GOOGLE_REDIRECT_URI);
+  const googleRedirectUrl = parseAbsoluteUrl(
+    'GOOGLE_REDIRECT_URI',
+    currentConfig.GOOGLE_REDIRECT_URI
+  );
 
   if (currentConfig.APP_ENV === 'local' && currentConfig.NODE_ENV !== 'development') {
     throw new Error('APP_ENV=local requires NODE_ENV=development');
@@ -485,7 +509,9 @@ function validateRuntimeConfig(currentConfig) {
     assertSecureRemoteUrl('GOOGLE_REDIRECT_URI', googleRedirectUrl);
 
     if (frontendUrl && googleRedirectUrl && frontendUrl.origin !== googleRedirectUrl.origin) {
-      throw new Error('GOOGLE_REDIRECT_URI must share the same origin as FRONTEND_URL outside APP_ENV=local');
+      throw new Error(
+        'GOOGLE_REDIRECT_URI must share the same origin as FRONTEND_URL outside APP_ENV=local'
+      );
     }
   }
 
@@ -496,29 +522,41 @@ validateRuntimeConfig(config);
 
 if (appEnv === 'local') {
   if (!process.env.JWT_SECRET) {
-    console.warn('Using fallback JWT_SECRET in development. Set JWT_SECRET in .env before deploying.');
+    console.warn(
+      'Using fallback JWT_SECRET in development. Set JWT_SECRET in .env before deploying.'
+    );
   }
 
   if (config.ADMIN_GOOGLE_EMAILS.length === 0) {
-    console.warn('ADMIN_GOOGLE_EMAILS is not set. Dashboard access will be denied until it is configured.');
+    console.warn(
+      'ADMIN_GOOGLE_EMAILS is not set. Dashboard access will be denied until it is configured.'
+    );
   }
 
   if (!process.env.SUPABASE_DB_URL) {
-    console.warn('SUPABASE_DB_URL is not set. Database-backed logging will not work until it is configured.');
+    console.warn(
+      'SUPABASE_DB_URL is not set. Database-backed logging will not work until it is configured.'
+    );
   }
 
   if (!process.env.OPENAI_API_KEY) {
-    console.warn('OPENAI_API_KEY is not set. The AI player will use deterministic fallback logic until configured.');
+    console.warn(
+      'OPENAI_API_KEY is not set. The AI player will use deterministic fallback logic until configured.'
+    );
   }
 }
 
 if (appEnv !== 'local') {
   if (!process.env.FRONTEND_URL) {
-    console.warn('FRONTEND_URL is not set. Auth redirects will stay on the backend origin until it is configured.');
+    console.warn(
+      'FRONTEND_URL is not set. Auth redirects will stay on the backend origin until it is configured.'
+    );
   }
 
   if (!process.env.GOOGLE_REDIRECT_URI) {
-    console.warn('GOOGLE_REDIRECT_URI is not set. Google OAuth will not work until it is configured.');
+    console.warn(
+      'GOOGLE_REDIRECT_URI is not set. Google OAuth will not work until it is configured.'
+    );
   }
 }
 

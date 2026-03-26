@@ -18,7 +18,10 @@ const { AgentGovernanceService } = require('../services/agents/AgentGovernanceSe
 const { AgentModerationService } = require('../services/agents/AgentModerationService');
 const { AgentManagementService } = require('../services/agents/AgentManagementService');
 const { WorldEventStreamService } = require('../services/world/WorldEventStreamService');
-const { WorldRuntimeWorker, classifyWorkerCommandError } = require('../services/world/WorldRuntimeWorker');
+const {
+  WorldRuntimeWorker,
+  classifyWorkerCommandError,
+} = require('../services/world/WorldRuntimeWorker');
 const { WorldRuntimeGateway } = require('../services/world/WorldRuntimeGateway');
 const { buildSnapshotDelta } = require('../services/world/WorldDeltaService');
 const { ADMIN_RETRYABLE_WORLD_COMMAND_STATUSES } = require('../database/world-runtime');
@@ -40,7 +43,9 @@ test('scheduler runs sync callback when schedulers are enabled', async () => {
   let calls = 0;
   const scheduler = new AgentWorldScheduler({
     canRunSchedulers: () => true,
-    syncWorldAgents: async () => { calls += 1; },
+    syncWorldAgents: async () => {
+      calls += 1;
+    },
   });
 
   const accepted = scheduler.maybeSyncWorldAgents();
@@ -54,7 +59,9 @@ test('scheduler skips sync callback when schedulers are disabled', async () => {
   let calls = 0;
   const scheduler = new AgentWorldScheduler({
     canRunSchedulers: () => false,
-    syncWorldAgents: async () => { calls += 1; },
+    syncWorldAgents: async () => {
+      calls += 1;
+    },
   });
 
   const accepted = scheduler.maybeSyncWorldAgents();
@@ -68,7 +75,9 @@ test('scheduler runs decision callback when schedulers are enabled', async () =>
   let calls = 0;
   const scheduler = new AgentWorldScheduler({
     canRunSchedulers: () => true,
-    requestAgentDecisions: async () => { calls += 1; },
+    requestAgentDecisions: async () => {
+      calls += 1;
+    },
   });
 
   const accepted = scheduler.maybeRequestAgentDecisions();
@@ -82,7 +91,9 @@ test('scheduler skips decision callback when schedulers are disabled', async () 
   let calls = 0;
   const scheduler = new AgentWorldScheduler({
     canRunSchedulers: () => false,
-    requestAgentDecisions: async () => { calls += 1; },
+    requestAgentDecisions: async () => {
+      calls += 1;
+    },
   });
 
   const accepted = scheduler.maybeRequestAgentDecisions();
@@ -101,7 +112,12 @@ test('realm lease service emits acquired and lost callbacks on leadership transi
     ownerInstanceId: 'instance-a',
     leaseTtlMs: 7000,
     realmRepository: {
-      async acquireOrRenewRealmLease({ realmId, ownerInstanceId: localOwner, leaseToken, expiresAt }) {
+      async acquireOrRenewRealmLease({
+        realmId,
+        ownerInstanceId: localOwner,
+        leaseToken,
+        expiresAt,
+      }) {
         return {
           realmId,
           ownerInstanceId,
@@ -331,11 +347,9 @@ test('decodeAuthToken returns normalized user data with sid', () => {
 });
 
 test('decodeAuthToken rejects payloads without user id', () => {
-  const token = jwt.sign(
-    { name: 'Gardener', sid: 'session-01' },
-    config.JWT_SECRET,
-    { expiresIn: '2m' }
-  );
+  const token = jwt.sign({ name: 'Gardener', sid: 'session-01' }, config.JWT_SECRET, {
+    expiresIn: '2m',
+  });
 
   const decoded = decodeAuthToken(token);
   assert.equal(decoded, null);
@@ -535,7 +549,9 @@ test('world event stream wakes up immediately on runtime bus notifications', asy
 
   service.subscribers.set('s1', { kind: 'public', res: { writableEnded: true, destroyed: true } });
   let polled = 0;
-  service.poll = async () => { polled += 1; };
+  service.poll = async () => {
+    polled += 1;
+  };
 
   const startedAt = Date.now();
   await service.handleRuntimeNotification({ realmId: 'realm-01' });
@@ -593,10 +609,9 @@ test('snapshot delta includes all dynamic world collections when they change', (
 });
 
 test('buildErrorResponse includes catalog metadata and correlation id', () => {
-  const { statusCode, payload, appError } = buildErrorResponse(
-    createAppError('invalid_session'),
-    { correlationId: 'corr-1234' }
-  );
+  const { statusCode, payload, appError } = buildErrorResponse(createAppError('invalid_session'), {
+    correlationId: 'corr-1234',
+  });
 
   assert.equal(statusCode, 401);
   assert.equal(appError.code, 'invalid_session');
@@ -607,13 +622,10 @@ test('buildErrorResponse includes catalog metadata and correlation id', () => {
 });
 
 test('buildErrorResponse uses fallback code for non-app errors', () => {
-  const { statusCode, payload } = buildErrorResponse(
-    new Error('invalid payload'),
-    {
-      fallbackCode: 'validation_failed',
-      correlationId: 'corr-5678',
-    }
-  );
+  const { statusCode, payload } = buildErrorResponse(new Error('invalid payload'), {
+    fallbackCode: 'validation_failed',
+    correlationId: 'corr-5678',
+  });
 
   assert.equal(statusCode, 400);
   assert.equal(payload.error, 'Validation failed');
@@ -703,7 +715,8 @@ test('public service classes include task-18 jsdoc headers', () => {
     },
     {
       filePath: path.resolve(__dirname, '../services/agents/AgentGovernanceService.js'),
-      marker: 'Enforces runtime governance constraints (rate limits, budget and circuit breakers) for agents.',
+      marker:
+        'Enforces runtime governance constraints (rate limits, budget and circuit breakers) for agents.',
     },
     {
       filePath: path.resolve(__dirname, '../services/world/WorldEventStreamService.js'),
@@ -711,7 +724,8 @@ test('public service classes include task-18 jsdoc headers', () => {
     },
     {
       filePath: path.resolve(__dirname, '../services/world/WorldRuntimeWorker.js'),
-      marker: 'Background worker responsible for processing world command queue and flushing snapshots.',
+      marker:
+        'Background worker responsible for processing world command queue and flushing snapshots.',
     },
   ];
 
@@ -753,30 +767,32 @@ test('world event stream service rejects new subscription when total capacity is
 
   await assert.rejects(
     service.subscribePublic(req, res),
-    (error) => error?.code === 'sse_capacity_exceeded'
-      && error?.statusCode === 429
-      && error?.details?.scope === 'total'
+    (error) =>
+      error?.code === 'sse_capacity_exceeded' &&
+      error?.statusCode === 429 &&
+      error?.details?.scope === 'total'
   );
 });
 
 test('ai-game public stream route maps SSE capacity errors to HTTP 429', async () => {
   const app = express();
-  app.use('/api/v1/ai-game', createAiGameRoutes({
-    worldEventStreamService: {
-      async subscribePublic() {
-        const error = new Error('Realtime stream capacity reached.');
-        error.code = 'sse_capacity_exceeded';
-        error.statusCode = 429;
-        error.details = { scope: 'total', maxSubscribers: 1, totalSubscribers: 1 };
-        throw error;
+  app.use(
+    '/api/v1/ai-game',
+    createAiGameRoutes({
+      worldEventStreamService: {
+        async subscribePublic() {
+          const error = new Error('Realtime stream capacity reached.');
+          error.code = 'sse_capacity_exceeded';
+          error.statusCode = 429;
+          error.details = { scope: 'total', maxSubscribers: 1, totalSubscribers: 1 };
+          throw error;
+        },
+        async subscribePlayer() {},
       },
-      async subscribePlayer() {},
-    },
-  }));
+    })
+  );
 
-  const response = await supertest(app)
-    .get('/api/v1/ai-game/public-stream')
-    .expect(429);
+  const response = await supertest(app).get('/api/v1/ai-game/public-stream').expect(429);
 
   assert.equal(response.body.code, 'sse_capacity_exceeded');
   assert.equal(response.body.details.scope, 'total');

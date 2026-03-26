@@ -78,9 +78,7 @@ test('POST /api/v1/platform/events validates event name', async () => {
 
   try {
     const app = createApp(createPlatformRoutes);
-    const response = await request(app)
-      .post('/api/v1/platform/events')
-      .send({ event: '!' });
+    const response = await request(app).post('/api/v1/platform/events').send({ event: '!' });
 
     assert.equal(response.status, 400);
     assert.equal(response.body.error, 'Invalid platform event.');

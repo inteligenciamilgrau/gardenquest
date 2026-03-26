@@ -1,7 +1,4 @@
-function createInventorySystem({
-  constants,
-  helpers,
-}) {
+function createInventorySystem({ constants, helpers }) {
   const {
     ACTION_COOLDOWN_MS,
     ACTION_RADIUS,
@@ -58,7 +55,13 @@ function createInventorySystem({
     return true;
   }
 
-  function performTowerElevatorRide(engine, actor, eventName, logContext, { clearMovement = false } = {}) {
+  function performTowerElevatorRide(
+    engine,
+    actor,
+    eventName,
+    logContext,
+    { clearMovement = false } = {}
+  ) {
     if (!actor || actor.status === 'dead') {
       return false;
     }
@@ -84,17 +87,18 @@ function createInventorySystem({
       engine.clearMovement();
     }
 
-    engine.logEvent(eventName, buildPlayerLogContext(actor, {
-      userAgent: logContext?.userAgent || 'backend-game',
-      details: `tower=${nearbyElevator.id}; triggered=true`,
-    }));
+    engine.logEvent(
+      eventName,
+      buildPlayerLogContext(actor, {
+        userAgent: logContext?.userAgent || 'backend-game',
+        details: `tower=${nearbyElevator.id}; triggered=true`,
+      })
+    );
     return true;
   }
 
   function getNearbyBowPickup(engine, position, maxDistance = BOW_PICKUP_RADIUS) {
-    const bows = Array.isArray(engine.state.world?.bows)
-      ? engine.state.world.bows
-      : [];
+    const bows = Array.isArray(engine.state.world?.bows) ? engine.state.world.bows : [];
     let closestBow = null;
     let closestDistance = Number.POSITIVE_INFINITY;
 
@@ -110,9 +114,7 @@ function createInventorySystem({
   }
 
   function getNearbySwordPickup(engine, position, maxDistance = SWORD_PICKUP_RADIUS) {
-    const swords = Array.isArray(engine.state.world?.swords)
-      ? engine.state.world.swords
-      : [];
+    const swords = Array.isArray(engine.state.world?.swords) ? engine.state.world.swords : [];
     let closestSword = null;
     let closestDistance = Number.POSITIVE_INFINITY;
 
@@ -190,15 +192,15 @@ function createInventorySystem({
   function buildDroppedApplePosition(engine, actor) {
     const rotationY = Number(actor?.rotationY) || 0;
     const desiredPosition = {
-      x: (Number(actor?.position?.x) || 0) + (Math.sin(rotationY) * DROPPED_APPLE_DROP_DISTANCE),
+      x: (Number(actor?.position?.x) || 0) + Math.sin(rotationY) * DROPPED_APPLE_DROP_DISTANCE,
       y: DROPPED_APPLE_GROUND_Y,
-      z: (Number(actor?.position?.z) || 0) + (Math.cos(rotationY) * DROPPED_APPLE_DROP_DISTANCE),
+      z: (Number(actor?.position?.z) || 0) + Math.cos(rotationY) * DROPPED_APPLE_DROP_DISTANCE,
     };
     const resolvedPosition = resolveWalkablePosition(
       engine.state.world,
       actor.position,
       desiredPosition,
-      0.18,
+      0.18
     );
 
     return {
@@ -211,15 +213,15 @@ function createInventorySystem({
   function buildDroppedBowPosition(engine, actor) {
     const rotationY = Number(actor?.rotationY) || 0;
     const desiredPosition = {
-      x: (Number(actor?.position?.x) || 0) + (Math.sin(rotationY) * BOW_DROP_DISTANCE),
+      x: (Number(actor?.position?.x) || 0) + Math.sin(rotationY) * BOW_DROP_DISTANCE,
       y: Number(actor?.position?.y) || 0,
-      z: (Number(actor?.position?.z) || 0) + (Math.cos(rotationY) * BOW_DROP_DISTANCE),
+      z: (Number(actor?.position?.z) || 0) + Math.cos(rotationY) * BOW_DROP_DISTANCE,
     };
     const resolvedPosition = resolveWalkablePosition(
       engine.state.world,
       actor.position,
       desiredPosition,
-      0.2,
+      0.2
     );
 
     return {
@@ -232,15 +234,15 @@ function createInventorySystem({
   function buildDroppedSwordPosition(engine, actor) {
     const rotationY = Number(actor?.rotationY) || 0;
     const desiredPosition = {
-      x: (Number(actor?.position?.x) || 0) + (Math.sin(rotationY) * SWORD_DROP_DISTANCE),
+      x: (Number(actor?.position?.x) || 0) + Math.sin(rotationY) * SWORD_DROP_DISTANCE,
       y: Number(actor?.position?.y) || 0,
-      z: (Number(actor?.position?.z) || 0) + (Math.cos(rotationY) * SWORD_DROP_DISTANCE),
+      z: (Number(actor?.position?.z) || 0) + Math.cos(rotationY) * SWORD_DROP_DISTANCE,
     };
     const resolvedPosition = resolveWalkablePosition(
       engine.state.world,
       actor.position,
       desiredPosition,
-      0.2,
+      0.2
     );
 
     return {
@@ -290,7 +292,11 @@ function createInventorySystem({
       return false;
     }
 
-    if (actor.inventory?.hasSword || actor.inventory?.hasBow || (Number(actor.inventory?.apples) || 0) > 0) {
+    if (
+      actor.inventory?.hasSword ||
+      actor.inventory?.hasBow ||
+      (Number(actor.inventory?.apples) || 0) > 0
+    ) {
       if (actor === engine.state.ai) {
         engine.state.nextDecisionAt = Date.now() + 500;
       }
@@ -305,8 +311,9 @@ function createInventorySystem({
       return false;
     }
 
-    engine.state.world.swords = (engine.state.world.swords || [])
-      .filter((sword) => sword.id !== nearbySword.id);
+    engine.state.world.swords = (engine.state.world.swords || []).filter(
+      (sword) => sword.id !== nearbySword.id
+    );
     actor.inventory.hasSword = true;
     actor.status = 'acting';
     actor.currentAction = 'pick_sword';
@@ -316,10 +323,13 @@ function createInventorySystem({
       engine.clearMovement();
     }
 
-    engine.logEvent(eventName, buildPlayerLogContext(actor, {
-      userAgent: logContext?.userAgent || 'backend-game',
-      details: `sword=${nearbySword.id}`,
-    }));
+    engine.logEvent(
+      eventName,
+      buildPlayerLogContext(actor, {
+        userAgent: logContext?.userAgent || 'backend-game',
+        details: `sword=${nearbySword.id}`,
+      })
+    );
     return true;
   }
 
@@ -348,10 +358,13 @@ function createInventorySystem({
       engine.clearMovement();
     }
 
-    engine.logEvent(eventName, buildPlayerLogContext(actor, {
-      userAgent: logContext?.userAgent || 'backend-game',
-      details: `sword=${droppedSword.id}`,
-    }));
+    engine.logEvent(
+      eventName,
+      buildPlayerLogContext(actor, {
+        userAgent: logContext?.userAgent || 'backend-game',
+        details: `sword=${droppedSword.id}`,
+      })
+    );
     return true;
   }
 
@@ -360,7 +373,11 @@ function createInventorySystem({
       return false;
     }
 
-    if (actor.inventory?.hasBow || actor.inventory?.hasSword || (Number(actor.inventory?.apples) || 0) > 0) {
+    if (
+      actor.inventory?.hasBow ||
+      actor.inventory?.hasSword ||
+      (Number(actor.inventory?.apples) || 0) > 0
+    ) {
       if (actor === engine.state.ai) {
         engine.state.nextDecisionAt = Date.now() + 500;
       }
@@ -375,10 +392,14 @@ function createInventorySystem({
       return false;
     }
 
-    engine.state.world.bows = (engine.state.world.bows || [])
-      .filter((bow) => bow.id !== nearbyBow.id);
+    engine.state.world.bows = (engine.state.world.bows || []).filter(
+      (bow) => bow.id !== nearbyBow.id
+    );
     actor.inventory.hasBow = true;
-    actor.inventory.arrows = Math.max(1, Math.trunc(Number(nearbyBow.arrowsRemaining) || BOW_DEFAULT_ARROW_COUNT));
+    actor.inventory.arrows = Math.max(
+      1,
+      Math.trunc(Number(nearbyBow.arrowsRemaining) || BOW_DEFAULT_ARROW_COUNT)
+    );
     actor.status = 'acting';
     actor.currentAction = 'pick_bow';
     actor.actionCooldownUntil = Date.now() + ACTION_COOLDOWN_MS;
@@ -387,10 +408,13 @@ function createInventorySystem({
       engine.clearMovement();
     }
 
-    engine.logEvent(eventName, buildPlayerLogContext(actor, {
-      userAgent: logContext?.userAgent || 'backend-game',
-      details: `bow=${nearbyBow.id}; arrows=${actor.inventory.arrows}`,
-    }));
+    engine.logEvent(
+      eventName,
+      buildPlayerLogContext(actor, {
+        userAgent: logContext?.userAgent || 'backend-game',
+        details: `bow=${nearbyBow.id}; arrows=${actor.inventory.arrows}`,
+      })
+    );
     return true;
   }
 
@@ -419,10 +443,13 @@ function createInventorySystem({
       engine.clearMovement();
     }
 
-    engine.logEvent(eventName, buildPlayerLogContext(actor, {
-      userAgent: logContext?.userAgent || 'backend-game',
-      details: `bow=${droppedBow.id}; arrows=${droppedBow.arrowsRemaining}`,
-    }));
+    engine.logEvent(
+      eventName,
+      buildPlayerLogContext(actor, {
+        userAgent: logContext?.userAgent || 'backend-game',
+        details: `bow=${droppedBow.id}; arrows=${droppedBow.arrowsRemaining}`,
+      })
+    );
     return true;
   }
 
@@ -454,8 +481,9 @@ function createInventorySystem({
         nearbyTree.nextAppleRegrowAt = Date.now() + APPLE_REGROW_INTERVAL_MS;
       }
     } else {
-      engine.state.world.droppedApples = (engine.state.world.droppedApples || [])
-        .filter((apple) => apple.id !== pickupSource.apple.id);
+      engine.state.world.droppedApples = (engine.state.world.droppedApples || []).filter(
+        (apple) => apple.id !== pickupSource.apple.id
+      );
     }
 
     actor.inventory.apples += 1;
@@ -558,20 +586,23 @@ function createInventorySystem({
     const heldArrows = Math.max(0, Math.trunc(Number(actor.inventory?.arrows) || 0));
     const canActNow = now >= actor.actionCooldownUntil;
     const weaponInteractionsEnabled = actor.actorType !== 'ai';
-    const canPickSword = weaponInteractionsEnabled
-      && !hasHeldSword
-      && !hasHeldBow
-      && !hasHeldFruit
-      && Boolean(getNearbySwordPickup(engine, actor.position));
-    const canPickBow = weaponInteractionsEnabled
-      && !hasHeldSword
-      && !hasHeldBow
-      && !hasHeldFruit
-      && Boolean(getNearbyBowPickup(engine, actor.position));
-    const canPickFruit = !hasHeldFruit
-      && !hasHeldSword
-      && !hasHeldBow
-      && Boolean(getNearbyFruitPickupSource(engine, actor.position));
+    const canPickSword =
+      weaponInteractionsEnabled &&
+      !hasHeldSword &&
+      !hasHeldBow &&
+      !hasHeldFruit &&
+      Boolean(getNearbySwordPickup(engine, actor.position));
+    const canPickBow =
+      weaponInteractionsEnabled &&
+      !hasHeldSword &&
+      !hasHeldBow &&
+      !hasHeldFruit &&
+      Boolean(getNearbyBowPickup(engine, actor.position));
+    const canPickFruit =
+      !hasHeldFruit &&
+      !hasHeldSword &&
+      !hasHeldBow &&
+      Boolean(getNearbyFruitPickupSource(engine, actor.position));
     const nearbyElevator = getNearbyTowerElevator(engine.state.world, actor.position);
 
     return {
@@ -579,21 +610,24 @@ function createInventorySystem({
       elevator_down: nearbyElevator?.direction === 'down' && canActNow,
       attack_sword: weaponInteractionsEnabled && hasHeldSword && canActNow,
       shoot_arrow: weaponInteractionsEnabled && hasHeldBow && heldArrows > 0 && canActNow,
-      kick_ball: !hasHeldSword
-        && !hasHeldBow
-        && !engine.isSoccerRestartPaused(now)
-        && engine.isNearSoccerBall(actor.position)
-        && canActNow,
+      kick_ball:
+        !hasHeldSword &&
+        !hasHeldBow &&
+        !engine.isSoccerRestartPaused(now) &&
+        engine.isNearSoccerBall(actor.position) &&
+        canActNow,
       drink_water: !hasHeldSword && !hasHeldBow && engine.isNearLake(actor.position) && canActNow,
       pick_sword: canPickSword && canActNow,
       pick_bow: canPickBow && canActNow,
       pick_fruit: canPickFruit && canActNow,
       eat_fruit: !hasHeldSword && !hasHeldBow && hasHeldFruit && canActNow,
-      ...(includeDrop ? {
-        drop_sword: weaponInteractionsEnabled && hasHeldSword && canActNow,
-        drop_bow: weaponInteractionsEnabled && hasHeldBow && canActNow,
-        drop_fruit: hasHeldFruit && canActNow,
-      } : {}),
+      ...(includeDrop
+        ? {
+            drop_sword: weaponInteractionsEnabled && hasHeldSword && canActNow,
+            drop_bow: weaponInteractionsEnabled && hasHeldBow && canActNow,
+            drop_fruit: hasHeldFruit && canActNow,
+          }
+        : {}),
     };
   }
 

@@ -24,7 +24,9 @@ function createAgentProvider({ agent, deps = {} }) {
     return new RemoteEndpointProvider(deps);
   }
 
-  throw new Error(`Unsupported agent mode/provider combination: ${agent.mode}/${agent.provider || 'unknown'}`);
+  throw new Error(
+    `Unsupported agent mode/provider combination: ${agent.mode}/${agent.provider || 'unknown'}`
+  );
 }
 
 module.exports = { createAgentProvider };
