@@ -72,7 +72,6 @@
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
         
-        console.debug(`[Platform] Requesting ${method} ${path}...`);
         const startTime = Date.now();
 
         try {
@@ -88,7 +87,6 @@
             clearTimeout(timeoutId);
 
             const duration = Date.now() - startTime;
-            console.debug(`[Platform] Response from ${path}: ${response.status} (${duration}ms)`);
 
             if (response.status === 204) {
                 return null;
@@ -181,11 +179,8 @@
         const lastRedirect = Number(sessionStorage.getItem(loopKey)) || 0;
         const now = Date.now();
 
-        console.debug(`[Platform] requireAuth for ${path}. Last redirect: ${lastRedirect ? new Date(lastRedirect).toLocaleTimeString() : 'none'}`);
-
         try {
             const user = await getUser({ force: true });
-            console.info(`[Platform] Session valid for user id: ${user?.id}`);
             sessionStorage.removeItem(loopKey);
             return user;
         } catch (error) {

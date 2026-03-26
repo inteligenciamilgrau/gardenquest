@@ -393,18 +393,39 @@ function buildHouseWallCollisionBoxes(layout = HOUSE_LAYOUT) {
             addCollisionRect(rects, t.x - rColl, t.x - rColl + wallThickness, t.z - rColl, t.z - tDHalf, hOpt);
             addCollisionRect(rects, t.x - rColl, t.x - rColl + wallThickness, t.z + tDHalf, t.z + rColl, hOpt);
         }
+
+        // --- Tower Battlements (Muretas da Torre) ---
+        const topPlatformHalfSize = 1.9;
+        const topPlatformY = layout.wallHeight + 3.6; // Matches buildHouseTowerElevators
+        const tHalf = topPlatformHalfSize;
+
+        // North
+        addCollisionRect(rects, t.x - tHalf, t.x + tHalf, t.z + tHalf - 0.1, t.z + tHalf, { ...hOpt, minY: topPlatformY + 0.1, maxY: topPlatformY + 1.2 });
+        // South
+        addCollisionRect(rects, t.x - tHalf, t.x + tHalf, t.z - tHalf, t.z - tHalf + 0.1, { ...hOpt, minY: topPlatformY + 0.1, maxY: topPlatformY + 1.2 });
+        // West
+        addCollisionRect(rects, t.x - tHalf, t.x - tHalf + 0.1, t.z - tHalf, t.z + tHalf, { ...hOpt, minY: topPlatformY + 0.1, maxY: topPlatformY + 1.2 });
+        // East
+        addCollisionRect(rects, t.x + tHalf - 0.1, t.x + tHalf, t.z - tHalf, t.z + tHalf, { ...hOpt, minY: topPlatformY + 0.1, maxY: topPlatformY + 1.2 });
     });
 
     return rects;
 }
 
 function isPointInsideRect(point, rect, padding = 0) {
-    return (
+    const isInsideXZ = (
         point.x >= rect.minX - padding &&
         point.x <= rect.maxX + padding &&
         point.z >= rect.minZ - padding &&
         point.z <= rect.maxZ + padding
     );
+    if (!isInsideXZ) return false;
+
+    // Check vertical bounds if they exist in the rect definition
+    if (typeof rect.minY === 'number' && point.y < rect.minY) return false;
+    if (typeof rect.maxY === 'number' && point.y > rect.maxY) return false;
+
+    return true;
 }
 
 function buildSoccerGrandstandLayout(fieldState = DEFAULT_SOCCER_FIELD_LAYOUT) {
@@ -585,6 +606,15 @@ class World {
             };
         this.soccerGrandstandCollisionBoxes = buildSoccerGrandstandCollisionBoxes(this.soccerFieldState);
         this.soccerGrandstandStepSurfaces = buildSoccerGrandstandStepSurfaces(this.soccerFieldState);
+
+        this.arrowTrails = [];
+        this.trailMaterial = new THREE.MeshBasicMaterial({
+            color: 0xfff7ed,
+            transparent: true,
+            opacity: 0.65,
+            blending: THREE.AdditiveBlending,
+        });
+        this.trailGeometry = new THREE.SphereGeometry(0.06, 6, 6);
 
         this._createGround();
         this._createSky();
@@ -2157,7 +2187,25 @@ class World {
             if (typeof marker.userData.targetRotationY === 'number') {
                 marker.rotation.y = marker.userData.targetRotationY;
             }
+
+            // Spawn trail particle
+            if (Math.random() > 0.1) {
+                this._createArrowTrailParticle(marker.position);
+            }
         });
+
+        // Update trail particles
+        for (let i = this.arrowTrails.length - 1; i >= 0; i--) {
+            const p = this.arrowTrails[i];
+            p.life -= 0.045;
+            p.scale.multiplyScalar(0.92);
+            p.material.opacity = p.life * 0.6;
+            
+            if (p.life <= 0) {
+                this.mainGroup.remove(p);
+                this.arrowTrails.splice(i, 1);
+            }
+        }
 
         if (this.towerElevatorCars) {
             this.towerElevatorCars.forEach((car) => {
@@ -2732,6 +2780,14 @@ class World {
         return arrowGroup;
     }
 
+    _createArrowTrailParticle(position) {
+        const p = new THREE.Mesh(this.trailGeometry, this.trailMaterial.clone());
+        p.position.copy(position);
+        p.life = 1.0;
+        this.mainGroup.add(p);
+        this.arrowTrails.push(p);
+    }
+
     _disposeArrowProjectileMarker(marker) {
         if (!marker) {
             return;
@@ -2914,6 +2970,8 @@ class World {
         this.looseSwords.clear();
         this.looseBows.clear();
         this.arrowProjectiles.clear();
+        this.arrowTrails.forEach(p => this.mainGroup.remove(p));
+        this.arrowTrails = [];
         this.graves.clear();
 
         this.mainGroup = null;

@@ -407,6 +407,68 @@ body {
     margin: 0 4px;
 }
 
+/* Bow crosshair */
+#crosshair {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 1000;
+    transition: all 0.15s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+#crosshair.target-locked {
+    width: 32px;
+    height: 32px;
+    filter: drop-shadow(0 0 8px rgba(255, 40, 40, 0.8));
+}
+
+#crosshair::before,
+#crosshair::after {
+    content: '';
+    position: absolute;
+    background: rgba(255, 255, 255, 0.9);
+    transition: background-color 0.2s ease;
+    border-radius: 2px;
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+}
+
+#crosshair.target-locked::before,
+#crosshair.target-locked::after {
+    background: #ff4747;
+}
+
+/* Horizontal bar */
+.crosshair::before {
+    width: 24px;
+    height: 2px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+/* Vertical bar */
+.crosshair::after {
+    width: 2px;
+    height: 24px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.crosshair[hidden] {
+    display: none;
+}
+
+@keyframes crosshairFade {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+
 .floating-msg {
     position: fixed;
     top: 50%;

@@ -142,6 +142,9 @@ function validatePlayerCommandBody(body, { chatMaxChars }) {
       const moveX = normalizeAxis(payload.moveX);
       const moveZ = normalizeAxis(payload.moveZ);
       const isRunning = normalizeBoolean(payload.isRunning, false);
+      const lookX = Number.isFinite(Number(payload.lookX)) ? Number(payload.lookX) : 0;
+      const lookZ = Number.isFinite(Number(payload.lookZ)) ? Number(payload.lookZ) : 0;
+      const lookPitch = Number.isFinite(Number(payload.lookPitch)) ? Number(payload.lookPitch) : 0;
 
       if (moveX == null || moveZ == null) {
         validationErrors.push('Movement input must be finite numeric values.');
@@ -154,19 +157,37 @@ function validatePlayerCommandBody(body, { chatMaxChars }) {
             moveX,
             moveZ,
             isRunning,
+            lookX,
+            lookZ,
+            lookPitch,
           },
         };
       }
       break;
     }
     case 'perform_action':
-    case 'use_action':
-    case 'toggle_fruit':
+    case 'use_action': {
+      const lookX = Number.isFinite(Number(payload.lookX)) ? Number(payload.lookX) : 0;
+      const lookZ = Number.isFinite(Number(payload.lookZ)) ? Number(payload.lookZ) : 0;
+      const lookPitch = Number.isFinite(Number(payload.lookPitch)) ? Number(payload.lookPitch) : 0;
+
+      normalizedCommand = {
+        type,
+        payload: {
+          lookX,
+          lookZ,
+          lookPitch,
+        },
+      };
+      break;
+    }
+    case 'toggle_fruit': {
       normalizedCommand = {
         type,
         payload: {},
       };
       break;
+    }
     case 'chat': {
       const message =
         typeof payload.message === 'string' ? payload.message.replace(/\s+/g, ' ').trim() : '';

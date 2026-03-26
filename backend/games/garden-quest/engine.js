@@ -1699,10 +1699,29 @@ class AiGameEngine {
         player.input.moveX = clamp(command.payload.moveX, -1, 1);
         player.input.moveZ = clamp(command.payload.moveZ, -1, 1);
         player.input.isRunning = Boolean(command.payload.isRunning);
+
+        // Always update rotation from camera direction so player faces where they look (for bow aiming and strafing)
+        const lookX = Number(command.payload.lookX) || 0;
+        const lookZ = Number(command.payload.lookZ) || 0;
+        if (Math.abs(lookX) > 1e-6 || Math.abs(lookZ) > 1e-6) {
+          player.rotationY = Math.atan2(lookX, lookZ);
+        }
+
+        // Always store lookPitch for bow vertical aim
+        player.lookPitch = Number(command.payload.lookPitch) || 0;
         return { ok: true };
       case 'use_action':
-      case 'perform_action':
+      case 'perform_action': {
+        // Sync camera direction from payload so arrow fires where the player is looking RIGHT NOW
+        const actionLookX = Number(command.payload.lookX) || 0;
+        const actionLookZ = Number(command.payload.lookZ) || 0;
+        const actionLookPitch = Number(command.payload.lookPitch) || 0;
+        if (Math.abs(actionLookX) > 1e-6 || Math.abs(actionLookZ) > 1e-6) {
+          player.rotationY = Math.atan2(actionLookX, actionLookZ);
+        }
+        player.lookPitch = actionLookPitch;
         return this.performPlayerUseAction(player);
+      }
       case 'toggle_fruit':
         return this.performPlayerFruitToggle(player);
       case 'chat':
@@ -1739,19 +1758,21 @@ class AiGameEngine {
 
     const availableActions = this.getAvailableActions(player, now);
     const selectedAction =
-      availableActions.elevator_up || availableActions.elevator_down
-        ? 'ride_elevator'
-        : availableActions.attack_sword
-          ? 'attack_sword'
-          : availableActions.shoot_arrow
-            ? 'shoot_arrow'
+      availableActions.attack_sword
+        ? 'attack_sword'
+        : availableActions.shoot_arrow
+          ? 'shoot_arrow'
+          : availableActions.elevator_up
+            ? 'ride_elevator'
             : availableActions.kick_ball
               ? 'kick_ball'
               : availableActions.drink_water
                 ? 'drink_water'
                 : availableActions.eat_fruit
                   ? 'eat_fruit'
-                  : null;
+                  : availableActions.elevator_down
+                    ? 'ride_elevator'
+                    : null;
 
     if (!selectedAction) {
       return {
@@ -2340,7 +2361,7 @@ class AiGameEngine {
       player.position.x = nextPosition.x;
       player.position.y = nextPosition.y;
       player.position.z = nextPosition.z;
-      player.rotationY = Math.atan2(directionX, directionZ);
+      // Rotation is decoupled from movement for players (follows camera look direction)
       player.status = 'moving';
       player.currentAction = 'move';
       if (this.maybeRegisterSoccerGoalFromCarrierMovement(player, previousPosition, now)) {

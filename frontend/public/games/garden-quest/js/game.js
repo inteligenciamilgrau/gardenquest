@@ -294,6 +294,7 @@
     const profileColorValue = document.getElementById('profileColorValue');
     const profileStatus = document.getElementById('profileStatus');
     const profileSaveBtn = document.getElementById('profileSaveBtn');
+    const crosshairEl = document.getElementById('crosshair');
     let chatMaxChars = Number(chatInput?.maxLength) || 72;
     let nicknameMaxChars = Number(profileNicknameInput?.maxLength) || PLAYER_NICKNAME_MAX_LENGTH;
     let isChatMinimized = loadChatWidgetMinimized();
@@ -306,7 +307,6 @@
 
     if (hudName) hudName.textContent = initialProfile.nickname || 'Jogador';
     if (hudAvatar) {
-        console.debug('[Game] Setting HUD avatar...');
         if (user.picture) {
             hudAvatar.src = user.picture;
         }
@@ -1842,6 +1842,7 @@
     });
 
     let remotePlayers = new Map();
+    let currentAimTarget = null;
     const playerFocus = new THREE.Vector3();
     const scenicFocus = new THREE.Vector3();
     const lookTarget = new THREE.Vector3();
@@ -1899,7 +1900,10 @@
     applyRuntimeSettings(initialSettings);
 
     function formatInputSignature(input) {
-        return `${input.moveX.toFixed(3)}:${input.moveZ.toFixed(3)}:${input.isRunning ? 1 : 0}`;
+        const lx = (Number(input.lookX) || 0).toFixed(5);
+        const lz = (Number(input.lookZ) || 0).toFixed(5);
+        const lp = (Number(input.lookPitch) || 0).toFixed(5);
+        return `${input.moveX.toFixed(3)}:${input.moveZ.toFixed(3)}:${input.isRunning ? 1 : 0}:${lx}:${lz}:${lp}`;
     }
 
     function cloneMovementInput(input = {}) {
@@ -1907,6 +1911,9 @@
             moveX: Number(input.moveX) || 0,
             moveZ: Number(input.moveZ) || 0,
             isRunning: Boolean(input.isRunning),
+            lookX: Number(input.lookX) || 0,
+            lookZ: Number(input.lookZ) || 0,
+            lookPitch: Number(input.lookPitch) || 0,
         };
     }
 
@@ -1929,16 +1936,44 @@
 
     function computeMovementVector() {
         const isRunning = Boolean(keys.shift);
+        // Use parallax-corrected shooting direction for general orientation
+        const yaw = Number(cameraState.yaw) || 0;
+        const pitch = Number(cameraState.pitch) || 0;
+        
+        let shootingDir;
+        if (currentAimTarget?.player?.group || currentAimTarget?.group) {
+            // TARGET LOCK: Aim at the center of the target's body
+            const targetPos = new THREE.Vector3();
+            const targetGroup = currentAimTarget.player?.group || currentAimTarget.group;
+            targetGroup.getWorldPosition(targetPos);
+            targetPos.y += 1.46; // Center of mass/chest height
+            
+            const origin = localPlayer.getPosition().clone().add(new THREE.Vector3(0, 1.46, 0));
+            shootingDir = targetPos.sub(origin).normalize();
+        } else {
+            // MANUAL AIM: Use parallax-corrected direction
+            const horizontalDist = 30 * Math.cos(pitch);
+            const targetX = localPlayer.getPosition().x - Math.sin(yaw) * horizontalDist;
+            const targetZ = localPlayer.getPosition().z - Math.cos(yaw) * horizontalDist;
+            const targetY = localPlayer.getPosition().y + PLAYER_CAMERA_FOCUS_HEIGHT + Math.sin(pitch) * 30;
+            
+            const shootingOrigin = localPlayer.getPosition().clone().add(new THREE.Vector3(0, 1.46, 0));
+            shootingDir = new THREE.Vector3(targetX, targetY, targetZ).sub(shootingOrigin).normalize();
+        }
+        
+        const lookX = shootingDir.x;
+        const lookZ = shootingDir.z;
+        const lookPitch = Math.asin(clamp(shootingDir.y, -1, 1));
 
         if (isChatOpen || isProfileOpen || isCommandsOpen || stateSync.selfStatus === 'dead') {
-            return { moveX: 0, moveZ: 0, isRunning: false };
+            return { moveX: 0, moveZ: 0, isRunning: false, lookX, lookZ, lookPitch };
         }
 
         const inputForward = (keys.w || keys.arrowup ? 1 : 0) - (keys.s || keys.arrowdown ? 1 : 0);
         const inputRight = (keys.d || keys.arrowright ? 1 : 0) - (keys.a || keys.arrowleft ? 1 : 0);
 
         if (inputForward === 0 && inputRight === 0) {
-            return { moveX: 0, moveZ: 0, isRunning };
+            return { moveX: 0, moveZ: 0, isRunning, lookX, lookZ, lookPitch };
         }
 
         const forwardX = -Math.sin(cameraState.yaw);
@@ -1954,6 +1989,9 @@
             moveX: moveX / magnitude,
             moveZ: moveZ / magnitude,
             isRunning,
+            lookX,
+            lookZ,
+            lookPitch,
         };
     }
 
@@ -2312,7 +2350,8 @@
     function getPredictedSelfAuthorityState(input = getEffectiveMovementInput()) {
         const predictedPosition = stateSync.selfTargetPosition.clone();
         const moving = hasMovementInput(input);
-        let predictedRotationY = stateSync.selfTargetRotationY;
+        // Always use the live camera yaw for predicted rotation so the player mesh rotates immediately and matches aim direction even while walking
+        const predictedRotationY = Math.atan2(-Math.sin(cameraState.yaw), -Math.cos(cameraState.yaw));
 
         if (moving) {
             const movementSpeed = getMovementSpeedForInput(input);
@@ -2334,7 +2373,6 @@
                 nextPredictedPosition.y,
                 nextPredictedPosition.z
             );
-            predictedRotationY = Math.atan2(input.moveX, input.moveZ);
         }
 
         return {
@@ -2549,7 +2587,36 @@
         actionSoundboard.prime();
 
         try {
-            const result = await sendCommand('use_action');
+            // Use cameraState directly to avoid issues with looking-at-self in 3rd person
+            const yaw = Number(cameraState.yaw) || 0;
+            const pitch = Number(cameraState.pitch) || 0;
+            
+            let shootingDir;
+            if (currentAimTarget?.player?.group || currentAimTarget?.group) {
+                // TARGET LOCK
+                const targetPos = new THREE.Vector3();
+                const targetGroup = currentAimTarget.player?.group || currentAimTarget.group;
+                targetGroup.getWorldPosition(targetPos);
+                targetPos.y += 1.46;
+                
+                const origin = localPlayer.getPosition().clone().add(new THREE.Vector3(0, 1.46, 0));
+                shootingDir = targetPos.sub(origin).normalize();
+            } else {
+                // Calculate a convergent direction (aiming towards a point 30m away)
+                const horizontalDist = 30 * Math.cos(pitch);
+                const targetX = localPlayer.getPosition().x - Math.sin(yaw) * horizontalDist;
+                const targetZ = localPlayer.getPosition().z - Math.cos(yaw) * horizontalDist;
+                const targetY = localPlayer.getPosition().y + PLAYER_CAMERA_FOCUS_HEIGHT + Math.sin(pitch) * 30;
+                
+                const shootingOrigin = localPlayer.getPosition().clone().add(new THREE.Vector3(0, 1.46, 0));
+                shootingDir = new THREE.Vector3(targetX, targetY, targetZ).sub(shootingOrigin).normalize();
+            }
+            
+            const result = await sendCommand('use_action', {
+                lookX: shootingDir.x,
+                lookZ: shootingDir.z,
+                lookPitch: Math.asin(clamp(shootingDir.y, -1, 1)),
+            });
             if (!result?.action) {
                 return;
             }
@@ -3265,6 +3332,21 @@
     }
     movementSyncInterval = setInterval(flushMovementInput, INPUT_SYNC_INTERVAL_MS);
 
+    function findActorFromObject(object) {
+        if (!object) return null;
+        let current = object;
+        while (current) {
+            // Check if it's the AI
+            if (aiPlayer?.group === current) return aiPlayer;
+            // Check remote players
+            for (const remoteState of remotePlayers.values()) {
+                if (remoteState.player?.group === current) return remoteState;
+            }
+            current = current.parent;
+        }
+        return null;
+    }
+
     function animate() {
         if (!isGameRunning) return;
         animationId = requestAnimationFrame(animate);
@@ -3335,6 +3417,35 @@
         });
 
         renderer.render(scene, camera);
+
+        // Crosshair: show when player has bow equipped
+        if (crosshairEl) {
+            const hasBow = Boolean(localPlayer.equipment?.bow);
+            crosshairEl.hidden = !hasBow;
+
+            if (hasBow) {
+                const raycaster = new THREE.Raycaster();
+                raycaster.setFromCamera({ x: 0, y: 0 }, camera);
+                
+                const targets = [];
+                if (aiPlayer?.group) targets.push(aiPlayer.group);
+                remotePlayers.forEach(rp => {
+                    if (rp.player?.group) targets.push(rp.player.group);
+                });
+
+                const intersects = raycaster.intersectObjects(targets, true);
+                if (intersects.length > 0) {
+                    currentAimTarget = findActorFromObject(intersects[0].object);
+                } else {
+                    currentAimTarget = null;
+                }
+                
+                crosshairEl.classList.toggle('target-locked', !!currentAimTarget);
+            } else {
+                currentAimTarget = null;
+                crosshairEl.classList.remove('target-locked');
+            }
+        }
     }
 
     animate();

@@ -22,7 +22,6 @@ async function initializeHub() {
     // Nuclear Reset if returning from game to purge residue
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('ref') === 'game_exit') {
-        console.info('[Hub] Returning from game. Forcing fresh platform bootstrap...');
         if (window.Platform && typeof window.Platform.getBootstrap === 'function') {
             await Platform.getBootstrap({ force: true }).catch(() => {});
         }
@@ -37,22 +36,12 @@ async function initializeHub() {
             console.warn(`[HUB-FREEZE-DETECTOR] ⚠️ UI Thread blocked for ${gap}ms!`);
         }
         lastPulse = now;
-
-        let jsHeap = 'N/A';
-        if (window.performance && window.performance.memory) {
-            const mem = window.performance.memory;
-            jsHeap = `${(mem.usedJSHeapSize / 1024 / 1024).toFixed(2)}MB / ${(mem.totalJSHeapSize / 1024 / 1024).toFixed(2)}MB`;
-        }
-        console.debug(`[HUB-HEARTBEAT] ❤️ Alive at ${new Date().toLocaleTimeString()} | 🧠 Memory: ${jsHeap}`);
     }, 10000);
 
     // Memory Monitor cleared (merged into heartbeat)
 
-    console.info('[Hub] Hub script starting...', {
-        apiUrl: window.API_URL,
-        location: window.location.href,
-        time: new Date().toLocaleTimeString()
-    });
+    console.info('[Hub] Hub script starting...');
+
 
     const loadingState = document.getElementById('hubLoadingState');
     const errorState = document.getElementById('hubErrorState');
@@ -64,34 +53,24 @@ async function initializeHub() {
     const logoutBtn = document.getElementById('hubLogoutBtn');
     const retryBtn = document.getElementById('hubRetryBtn');
 
-    console.debug('[Hub] DOM elements grabbed.');
-
     retryBtn?.addEventListener('click', () => {
-        console.log('[Hub] Retry clicked.');
         window.location.reload();
     });
 
     logoutBtn?.addEventListener('click', () => {
-        console.log('[Hub] Logout clicked.');
         void Platform.logout();
     });
 
     try {
-        console.debug('[Hub] Requesting authentication...');
         const user = await Platform.requireAuth({ redirectPath: '/hub.html' });
         
         if (!user) {
-            console.warn('[Hub] No user returned from requireAuth (redirecting likely).');
             return;
         }
 
-        console.info(`[Hub] Logged in as: ${user.name}`);
-
-        console.debug('[Hub] Fetching platform bootstrap...');
         const bootstrap = await Platform.getBootstrap();
         const games = Array.isArray(bootstrap?.games) ? bootstrap.games : [];
         
-        console.info(`[Hub] Bootstrap ready. Games count: ${games.length}`);
 
         if (userName) {
             userName.textContent = user.name || 'Jogador';
@@ -274,5 +253,4 @@ window.addEventListener('beforeunload', () => {
     if (heartbeatInterval) clearInterval(heartbeatInterval);
     if (memoryMonitorInterval) clearInterval(memoryMonitorInterval);
     if (particlesInterval) clearInterval(particlesInterval);
-    console.log('[Hub] Intervals cleared on exit.');
 });

@@ -60,12 +60,12 @@ const APPLE_OFFSETS = Object.freeze([
 const BOW_SPAWNS = Object.freeze([
   Object.freeze({
     id: 'castle-bow-west',
-    position: Object.freeze({ x: -7.2, y: 0.43, z: 19.3 }),
+    position: Object.freeze({ x: -7.2, y: 0.85, z: 18.0 }),
     arrowsRemaining: 2,
   }),
   Object.freeze({
     id: 'castle-bow-east',
-    position: Object.freeze({ x: 7.2, y: 0.43, z: 19.3 }),
+    position: Object.freeze({ x: 7.2, y: 0.85, z: 18.0 }),
     arrowsRemaining: 2,
   }),
 ]);
@@ -73,11 +73,13 @@ const BOW_SPAWNS = Object.freeze([
 const SWORD_SPAWNS = Object.freeze([
   Object.freeze({
     id: 'castle-sword-west',
-    position: Object.freeze({ x: -3.4, y: 0.43, z: 27.4 }),
+    position: Object.freeze({ x: -6, y: 0.85, z: 22.5 }),
+    damage: 15,
   }),
   Object.freeze({
     id: 'castle-sword-east',
-    position: Object.freeze({ x: 3.4, y: 0.43, z: 27.4 }),
+    position: Object.freeze({ x: 6, y: 0.85, z: 22.5 }),
+    damage: 15,
   }),
 ]);
 
@@ -97,12 +99,14 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
-function createRect(minX, maxX, minZ, maxZ) {
+function createRect(minX, maxX, minZ, maxZ, minY = -Infinity, maxY = Infinity) {
   return Object.freeze({
     minX,
     maxX,
     minZ,
     maxZ,
+    minY,
+    maxY,
   });
 }
 
@@ -112,6 +116,8 @@ function cloneRect(rect) {
     maxX: Number(rect?.maxX) || 0,
     minZ: Number(rect?.minZ) || 0,
     maxZ: Number(rect?.maxZ) || 0,
+    minY: rect?.minY !== undefined ? Number(rect.minY) : -Infinity,
+    maxY: rect?.maxY !== undefined ? Number(rect.maxY) : Infinity,
   };
 }
 
@@ -150,13 +156,12 @@ function buildHouseInteriorMetrics(layout = HOUSE) {
 
 function buildHouseTowerElevators(layout = HOUSE) {
   const halfWidth = layout.width / 2;
-  const halfDepth = layout.depth / 2;
-  const southEdge = layout.position.z - halfDepth;
+  const southEdge = layout.position.z - (layout.depth / 2);
   const towerInsetX = 3.0;
   const towerInsetZ = 3.05;
   const towerRadius = 2.7;
   const topPlatformY = layout.wallHeight + 3.6;
-  const topPlatformHalfSize = 1.28;
+  const topPlatformHalfSize = 1.9;
   const doorwayOffset = towerRadius - 0.18;
   const callButtonOffset = towerRadius + 0.72;
 
@@ -189,6 +194,16 @@ function buildHouseTowerElevators(layout = HOUSE) {
         southEdge + towerInsetZ - topPlatformHalfSize,
         southEdge + towerInsetZ + topPlatformHalfSize
       ),
+      battlements: [
+        // North
+        createRect(layout.position.x - halfWidth + towerInsetX - topPlatformHalfSize, layout.position.x - halfWidth + towerInsetX + topPlatformHalfSize, southEdge + towerInsetZ + topPlatformHalfSize - 0.1, southEdge + towerInsetZ + topPlatformHalfSize, topPlatformY + 0.1, topPlatformY + 1.2),
+        // South
+        createRect(layout.position.x - halfWidth + towerInsetX - topPlatformHalfSize, layout.position.x - halfWidth + towerInsetX + topPlatformHalfSize, southEdge + towerInsetZ - topPlatformHalfSize, southEdge + towerInsetZ - topPlatformHalfSize + 0.1, topPlatformY + 0.1, topPlatformY + 1.2),
+        // West
+        createRect(layout.position.x - halfWidth + towerInsetX - topPlatformHalfSize, layout.position.x - halfWidth + towerInsetX - topPlatformHalfSize + 0.1, southEdge + towerInsetZ - topPlatformHalfSize, southEdge + towerInsetZ + topPlatformHalfSize, topPlatformY + 0.1, topPlatformY + 1.2),
+        // East
+        createRect(layout.position.x - halfWidth + towerInsetX + topPlatformHalfSize - 0.1, layout.position.x - halfWidth + towerInsetX + topPlatformHalfSize, southEdge + towerInsetZ - topPlatformHalfSize, southEdge + towerInsetZ + topPlatformHalfSize, topPlatformY + 0.1, topPlatformY + 1.2),
+      ],
     },
     {
       id: 'tower-east',
@@ -218,6 +233,16 @@ function buildHouseTowerElevators(layout = HOUSE) {
         southEdge + towerInsetZ - topPlatformHalfSize,
         southEdge + towerInsetZ + topPlatformHalfSize
       ),
+      battlements: [
+        // North
+        createRect(layout.position.x + halfWidth - towerInsetX - topPlatformHalfSize, layout.position.x + halfWidth - towerInsetX + topPlatformHalfSize, southEdge + towerInsetZ + topPlatformHalfSize - 0.1, southEdge + towerInsetZ + topPlatformHalfSize, topPlatformY + 0.1, topPlatformY + 1.2),
+        // South
+        createRect(layout.position.x + halfWidth - towerInsetX - topPlatformHalfSize, layout.position.x + halfWidth - towerInsetX + topPlatformHalfSize, southEdge + towerInsetZ - topPlatformHalfSize, southEdge + towerInsetZ - topPlatformHalfSize + 0.1, topPlatformY + 0.1, topPlatformY + 1.2),
+        // West
+        createRect(layout.position.x + halfWidth - towerInsetX - topPlatformHalfSize, layout.position.x + halfWidth - towerInsetX - topPlatformHalfSize + 0.1, southEdge + towerInsetZ - topPlatformHalfSize, southEdge + towerInsetZ + topPlatformHalfSize, topPlatformY + 0.1, topPlatformY + 1.2),
+        // East
+        createRect(layout.position.x + halfWidth - towerInsetX + topPlatformHalfSize - 0.1, layout.position.x + halfWidth - towerInsetX + topPlatformHalfSize, southEdge + towerInsetZ - topPlatformHalfSize, southEdge + towerInsetZ + topPlatformHalfSize, topPlatformY + 0.1, topPlatformY + 1.2),
+      ],
     },
   ];
 }
@@ -367,12 +392,12 @@ function buildWallSpans(rangeStart, rangeEnd, gaps = []) {
   return spans;
 }
 
-function addRectIfValid(rects, minX, maxX, minZ, maxZ) {
+function addRectIfValid(rects, minX, maxX, minZ, maxZ, minY = -Infinity, maxY = Infinity) {
   if (maxX - minX < 0.01 || maxZ - minZ < 0.01) {
     return;
   }
 
-  rects.push(createRect(minX, maxX, minZ, maxZ));
+  rects.push(createRect(minX, maxX, minZ, maxZ, minY, maxY));
 }
 
 function cloneGrave(grave) {
@@ -500,35 +525,45 @@ function createHouseWallCollisionBoxes(layout) {
     metrics.westEdge,
     metrics.eastEdge,
     metrics.northEdge - wallThickness,
-    metrics.northEdge
+    metrics.northEdge,
+    0,
+    layout.wallHeight
   );
   addRectIfValid(
     rects,
     metrics.westEdge,
     metrics.westEdge + wallThickness,
     metrics.southEdge,
-    metrics.northEdge
+    metrics.northEdge,
+    0,
+    layout.wallHeight
   );
   addRectIfValid(
     rects,
     metrics.eastEdge - wallThickness,
     metrics.eastEdge,
     metrics.southEdge,
-    metrics.northEdge
+    metrics.northEdge,
+    0,
+    layout.wallHeight
   );
   addRectIfValid(
     rects,
     metrics.westEdge,
     layout.position.x - halfDoorWidth,
     metrics.southEdge,
-    metrics.southEdge + wallThickness
+    metrics.southEdge + wallThickness,
+    0,
+    layout.wallHeight
   );
   addRectIfValid(
     rects,
     layout.position.x + halfDoorWidth,
     metrics.eastEdge,
     metrics.southEdge,
-    metrics.southEdge + wallThickness
+    metrics.southEdge + wallThickness,
+    0,
+    layout.wallHeight
   );
 
   return rects;
@@ -597,10 +632,12 @@ function createSoccerGrandstandCollisionBoxes(fieldState = SOCCER_FIELD) {
       Math.min(layout.backX, layout.backX + layout.sideMultiplier * backWallThickness),
       Math.max(layout.backX, layout.backX + layout.sideMultiplier * backWallThickness),
       layout.minZ - 0.08,
-      layout.maxZ + 0.08
+      layout.maxZ + 0.08,
+      0,
+      layout.tiers * layout.tierHeight
     ),
-    createRect(layout.minX - 0.08, layout.maxX + 0.08, layout.minZ - endWallThickness, layout.minZ),
-    createRect(layout.minX - 0.08, layout.maxX + 0.08, layout.maxZ, layout.maxZ + endWallThickness),
+    createRect(layout.minX - 0.08, layout.maxX + 0.08, layout.minZ - endWallThickness, layout.minZ, 0, layout.tiers * layout.tierHeight),
+    createRect(layout.minX - 0.08, layout.maxX + 0.08, layout.maxZ, layout.maxZ + endWallThickness, 0, layout.tiers * layout.tierHeight),
   ];
 }
 
@@ -644,7 +681,11 @@ function getWorldCollisionBoxes(worldState) {
   const grandstandCollisionBoxes = createSoccerGrandstandCollisionBoxes(
     worldState?.soccer?.field || SOCCER_FIELD
   );
-  return [...houseCollisionBoxes, ...grandstandCollisionBoxes];
+  
+  const towerBattlements = getHouseTowerElevators(worldState?.house || HOUSE)
+    .flatMap(t => t.battlements || []);
+
+  return [...houseCollisionBoxes, ...grandstandCollisionBoxes, ...towerBattlements];
 }
 
 function getWorldSurfaceHeight(worldState, position) {
@@ -661,7 +702,8 @@ function getWorldSurfaceHeight(worldState, position) {
       const eLayout = layout[index];
       const eState = elevatorsState.find((e) => e.id === eLayout.id);
       if (eState && isPositionInsideRect(position, eLayout.topSurface, 0)) {
-        resolvedHeight = Math.max(resolvedHeight, Number(eState.y) || 0);
+        // Tower top acts as a one-way floor: you can go up, but you stay at topY even if elevator goes down
+        resolvedHeight = Math.max(resolvedHeight, Number(eState.y) || 0, eLayout.topY);
       }
     }
   }
@@ -690,12 +732,23 @@ function getHouseTowerElevators(houseState = HOUSE) {
 }
 
 function isPositionInsideRect(position, rect, padding = 0) {
-  return (
+  const isInsideXZ = (
     position.x >= rect.minX - padding &&
     position.x <= rect.maxX + padding &&
     position.z >= rect.minZ - padding &&
     position.z <= rect.maxZ + padding
   );
+  
+  if (!isInsideXZ) return false;
+
+  // If rect has Y bounds, check them
+  if (rect.minY !== undefined || rect.maxY !== undefined) {
+    const minY = rect.minY ?? -Infinity;
+    const maxY = rect.maxY ?? Infinity;
+    return position.y >= minY && position.y <= maxY;
+  }
+
+  return true;
 }
 
 function isPositionBlocked(worldState, position, padding = 0) {

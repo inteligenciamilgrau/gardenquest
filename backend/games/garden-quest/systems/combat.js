@@ -276,22 +276,26 @@ function createCombatSystem({ constants, helpers }) {
     }
 
     const rotationY = Number(actor.rotationY) || 0;
-    const directionX = Math.sin(rotationY);
-    const directionZ = Math.cos(rotationY);
+    // Expanded pitch clamp to allow full vertical aiming range
+    const pitch = Math.max(-1.4, Math.min(1.4, Number(actor.lookPitch) || 0));
+    const horizontalSpeed = ARROW_PROJECTILE_SPEED * Math.cos(pitch);
+    const directionX = Math.sin(rotationY) * horizontalSpeed;
+    const directionZ = Math.cos(rotationY) * horizontalSpeed;
+    const directionY = Math.sin(pitch) * ARROW_PROJECTILE_SPEED;
     const now = Date.now();
 
     engine.state.world.arrows.push({
       id: `arrow-${engine.state.nextArrowProjectileId}`,
       ownerActorId: actor.id,
       position: {
-        x: (Number(actor.position?.x) || 0) + directionX * ARROW_FORWARD_OFFSET,
+        x: (Number(actor.position?.x) || 0) + Math.sin(rotationY) * ARROW_FORWARD_OFFSET,
         y: (Number(actor.position?.y) || 0) + ARROW_START_HEIGHT,
-        z: (Number(actor.position?.z) || 0) + directionZ * ARROW_FORWARD_OFFSET,
+        z: (Number(actor.position?.z) || 0) + Math.cos(rotationY) * ARROW_FORWARD_OFFSET,
       },
       velocity: {
-        x: directionX * ARROW_PROJECTILE_SPEED,
-        y: 0,
-        z: directionZ * ARROW_PROJECTILE_SPEED,
+        x: directionX,
+        y: directionY,
+        z: directionZ,
       },
       rotationY,
       expiresAt: now + ARROW_PROJECTILE_LIFETIME_MS,

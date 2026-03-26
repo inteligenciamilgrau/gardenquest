@@ -27,6 +27,7 @@ class Player {
         this.materials = {};
         this.hitFlashStartedAt = 0;
         this.hitFlashUntil = 0;
+        this.hitJumpOffset = 0;
         this.equipment = {
             sword: Boolean(options.equipment?.sword),
             bow: Boolean(options.equipment?.bow),
@@ -359,6 +360,16 @@ class Player {
             : 0;
         const emissiveIntensity = isFlashing && blinkPhase % 2 === 0 ? 0.95 : 0;
 
+        // Calculate visual hit jump offset
+        if (isFlashing) {
+            const hitDuration = this.hitFlashUntil - this.hitFlashStartedAt;
+            const progress = Math.max(0, Math.min(1, (now - this.hitFlashStartedAt) / hitDuration));
+            // Sin curve for a quick hop effect
+            this.hitJumpOffset = Math.sin(progress * Math.PI) * 0.55;
+        } else {
+            this.hitJumpOffset = 0;
+        }
+
         Object.values(this.materials).forEach((material) => {
             if (!material?.emissive) {
                 return;
@@ -371,6 +382,7 @@ class Player {
         if (!isFlashing && this.hitFlashUntil !== 0) {
             this.hitFlashStartedAt = 0;
             this.hitFlashUntil = 0;
+            this.hitJumpOffset = 0;
         }
     }
 
@@ -434,7 +446,7 @@ class Player {
 
                 this.group.position.set(
                     resolvedPosition.x ?? startX,
-                    this.groundY + this.jumpOffset,
+                    this.groundY + this.jumpOffset + this.hitJumpOffset,
                     resolvedPosition.z ?? startZ
                 );
             } else {
@@ -469,7 +481,7 @@ class Player {
         const positionLerp = Math.min(1, delta * 6);
         this.group.position.x += dx * positionLerp;
         this.group.position.z += dz * positionLerp;
-        this.group.position.y = this.groundY + this.jumpOffset;
+        this.group.position.y = this.groundY + this.jumpOffset + this.hitJumpOffset;
 
         let angleDiff = targetRotationY - this.group.rotation.y;
         while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
@@ -495,14 +507,14 @@ class Player {
         this.groundY = targetPosition.y ?? 0;
 
         if (distance > snapDistance) {
-            this.group.position.set(targetPosition.x, this.groundY + this.jumpOffset, targetPosition.z);
+            this.group.position.set(targetPosition.x, this.groundY + this.jumpOffset + this.hitJumpOffset, targetPosition.z);
         } else if (distance > deadzone) {
             const correctionLerp = Math.min(1, delta * positionStrength);
             this.group.position.x += dx * correctionLerp;
             this.group.position.z += dz * correctionLerp;
         }
 
-        this.group.position.y = this.groundY + this.jumpOffset;
+        this.group.position.y = this.groundY + this.jumpOffset + this.hitJumpOffset;
 
         let angleDiff = targetRotationY - this.group.rotation.y;
         while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
@@ -513,7 +525,7 @@ class Player {
     setTransform(position, rotationY = this.group.rotation.y) {
         if (position) {
             this.groundY = position.y ?? 0;
-            this.group.position.set(position.x ?? 0, this.groundY + this.jumpOffset, position.z ?? 0);
+            this.group.position.set(position.x ?? 0, this.groundY + this.jumpOffset + this.hitJumpOffset, position.z ?? 0);
         }
 
         if (typeof rotationY === 'number') {
@@ -544,7 +556,7 @@ class Player {
             this.jumpVelocity = 0;
         }
 
-        this.group.position.y = this.groundY + this.jumpOffset;
+        this.group.position.y = this.groundY + this.jumpOffset + this.hitJumpOffset;
     }
 
     _updateAnimation(delta) {

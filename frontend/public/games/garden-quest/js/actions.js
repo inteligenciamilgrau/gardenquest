@@ -8,6 +8,7 @@ class ActionHud {
         this.foodLevelEl = document.getElementById('foodLevel');
         this.waterLevelEl = document.getElementById('waterLevel');
         this.scoreValueEl = document.getElementById('scoreValue');
+        this.crosshairEl = document.getElementById('crosshair');
         this.systemNoticeTimer = null;
     }
 
@@ -23,6 +24,14 @@ class ActionHud {
             ...(selfState.inventory || {}),
             score: selfState.score,
         });
+        this._updateCrosshair(selfState);
+    }
+
+    _updateCrosshair(selfState) {
+        if (!this.crosshairEl) return;
+        const hasBow = !!(selfState.equipment && selfState.equipment.bow);
+        const isDead = selfState.status === 'dead';
+        this.crosshairEl.hidden = !hasBow || isDead;
     }
 
     _updatePrompt(selfState) {
