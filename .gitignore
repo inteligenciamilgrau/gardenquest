@@ -55,3 +55,13 @@ kill-8080.ps1
 
 # Pasta de Teste de PR
 temp_testing/
+
+# Ignore pastas iniciadas com numerais
+[0-9]*/
+
+# Artefatos legados arquivados (nao operacionais)
+archive/olds/
+archive/GardenQuest Projeto Detalhado.html
+
+# Artefatos de execucao de testes locais
+test-results/
