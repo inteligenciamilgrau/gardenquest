@@ -153,11 +153,12 @@ function buildRespawnCountdownMs(actor, now) {
 }
 
 function sanitizeText(value, maxLength) {
-  if (typeof value !== 'string') {
+  if (value == null) {
     return null;
   }
 
-  const normalized = value
+  const stringValue = typeof value === 'string' ? value : String(value);
+  const normalized = stringValue
     .replace(/[\u0000-\u001f\u007f]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -1498,6 +1499,10 @@ class AiGameEngine {
   }
 
   buildActorPublicState(actor, now) {
+    if (!actor) {
+      return null;
+    }
+
     return {
       id: actor.id,
       actorType: actor.actorType,
