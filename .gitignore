@@ -62,3 +62,5 @@ archive/GardenQuest Projeto Detalhado.html
 
 # Artefatos de execucao de testes locais
 test-results/
+# Pasta de Teste de PR
+temp_testing/
