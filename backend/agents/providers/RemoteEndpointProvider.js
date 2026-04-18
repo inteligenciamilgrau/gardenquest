@@ -1,6 +1,7 @@
 const { request } = require('undici');
 const { AgentRuntime } = require('../contracts/AgentRuntime');
 const { normalizeLegacyDecision } = require('../schemas/agent-action');
+const { validateRemoteEndpointUrl, assertHostnameResolvesPublicIp } = require('../../services/agents/endpoint-url-safety');
 
 class RemoteEndpointProvider extends AgentRuntime {
   constructor({ agentRepository, secretVault = null, logger = console } = {}) {
@@ -22,12 +23,7 @@ class RemoteEndpointProvider extends AgentRuntime {
       throw error;
     }
 
-    const parsedUrl = new URL(endpoint.baseUrl);
-    if (parsedUrl.protocol !== 'https:') {
-      const error = new Error('Remote endpoint must use https');
-      error.code = 'endpoint_insecure_protocol';
-      throw error;
-    }
+    validateRemoteEndpointUrl(endpoint.baseUrl);
 
     let authSecret = endpoint.authSecret || null;
     if (endpoint.authMode === 'bearer' && endpoint.authSecretPayload) {
@@ -85,10 +81,7 @@ class RemoteEndpointProvider extends AgentRuntime {
   }
 
   postJson({ endpoint, payload, timeoutMs }) {
-    const parsedUrl = new URL(endpoint.baseUrl);
-    if (parsedUrl.protocol !== 'https:') {
-      throw new Error('Remote endpoint must use https');
-    }
+    const parsedUrl = validateRemoteEndpointUrl(endpoint.baseUrl);
 
     const body = JSON.stringify(payload);
     const headers = {
@@ -126,6 +119,7 @@ class RemoteEndpointProvider extends AgentRuntime {
       let lastError = null;
 
       for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+        await assertHostnameResolvesPublicIp(parsedUrl.hostname);
         let res;
         try {
           res = await request(url, {

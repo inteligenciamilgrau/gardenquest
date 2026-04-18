@@ -17,6 +17,7 @@ const { AgentDecisionService } = require('../services/agents/AgentDecisionServic
 const { AgentGovernanceService } = require('../services/agents/AgentGovernanceService');
 const { AgentModerationService } = require('../services/agents/AgentModerationService');
 const { AgentManagementService } = require('../services/agents/AgentManagementService');
+const { validateRemoteEndpointUrl } = require('../services/agents/endpoint-url-safety');
 const { WorldEventStreamService } = require('../services/world/WorldEventStreamService');
 const {
   WorldRuntimeWorker,
@@ -228,6 +229,14 @@ test('openai client falls back to embedded prompt when configured file does not 
     config.OPENAI_NPC_SYSTEM_PROMPT_FILE = previousFile;
   }
 });
+
+test('remote endpoint validation rejects private IP hosts', () => {
+  assert.throws(
+    () => validateRemoteEndpointUrl('https://127.0.0.1/internal'),
+    (error) => error && error.statusCode === 400 && /private|local/i.test(error.message)
+  );
+});
+
 
 test('agent management service rejects endpoint URLs without https', async () => {
   let savedEndpoint = null;

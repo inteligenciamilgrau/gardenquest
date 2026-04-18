@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const config = require('../../config');
+const { validateRemoteEndpointUrl } = require('./endpoint-url-safety');
 
 function sanitizePolicy(policy) {
   const raw = policy && typeof policy === 'object' ? policy : {};
@@ -145,21 +146,7 @@ class AgentManagementService {
       throw error;
     }
 
-    let parsedBaseUrl;
-    try {
-      parsedBaseUrl = new URL(baseUrl);
-      if (parsedBaseUrl.protocol !== 'https:') {
-        const error = new Error('baseUrl must use https');
-        error.statusCode = 400;
-        throw error;
-      }
-    } catch (parseError) {
-      const error = new Error(
-        parseError?.statusCode === 400 ? parseError.message : 'baseUrl must be a valid absolute URL'
-      );
-      error.statusCode = 400;
-      throw error;
-    }
+    const parsedBaseUrl = validateRemoteEndpointUrl(baseUrl);
 
     const normalizedAuthMode = endpoint?.authMode === 'bearer' ? 'bearer' : 'none';
     const existingEndpoint = await this.agentRepository
