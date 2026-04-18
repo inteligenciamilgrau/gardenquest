@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const { EventEmitter } = require('events');
 const fs = require('fs');
 const path = require('path');
+const dns = require('dns').promises;
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const supertest = require('supertest');
@@ -17,6 +18,7 @@ const { AgentDecisionService } = require('../services/agents/AgentDecisionServic
 const { AgentGovernanceService } = require('../services/agents/AgentGovernanceService');
 const { AgentModerationService } = require('../services/agents/AgentModerationService');
 const { AgentManagementService } = require('../services/agents/AgentManagementService');
+const { RemoteEndpointProvider } = require('../agents/providers/RemoteEndpointProvider');
 const { WorldEventStreamService } = require('../services/world/WorldEventStreamService');
 const {
   WorldRuntimeWorker,
@@ -255,6 +257,59 @@ test('agent management service rejects endpoint URLs without https', async () =>
     (error) => error && error.statusCode === 400 && /https/i.test(error.message)
   );
   assert.equal(savedEndpoint, null);
+});
+
+test('agent management service allows endpoint hostnames and defers DNS safety checks to runtime', async () => {
+  let savedEndpoint = null;
+  const service = new AgentManagementService({
+    secretVault: null,
+    agentRepository: {
+      async getAgentByIdForOwner() {
+        return { id: 'agent-01', ownerUserId: 'user-01', mode: 'remote_endpoint' };
+      },
+      async getAgentEndpointByAgentId() {
+        return null;
+      },
+      async saveAgentEndpoint(payload) {
+        savedEndpoint = payload;
+      },
+    },
+  });
+
+  const configured = await service.configureEndpoint({
+    ownerUserId: 'user-01',
+    agentId: 'agent-01',
+    endpoint: { baseUrl: 'https://localhost:8443/agent' },
+  });
+
+  assert.equal(configured.ok, true);
+  assert.equal(savedEndpoint.baseUrl, 'https://localhost:8443/agent');
+});
+
+test('remote endpoint provider blocks private DNS resolution', async () => {
+  const originalLookup = dns.lookup;
+  dns.lookup = async () => [{ address: '127.0.0.1', family: 4 }];
+
+  const provider = new RemoteEndpointProvider({
+    agentRepository: {},
+  });
+
+  try {
+    await assert.rejects(
+      provider.postJson({
+        endpoint: {
+          baseUrl: 'https://example.com/agent',
+          authMode: 'none',
+          authSecret: null,
+        },
+        payload: { observation: {} },
+        timeoutMs: 500,
+      }),
+      (error) => error && error.code === 'endpoint_private_address'
+    );
+  } finally {
+    dns.lookup = originalLookup;
+  }
 });
 
 test('agent management service stores bearer endpoint secret as encrypted payload', async () => {
