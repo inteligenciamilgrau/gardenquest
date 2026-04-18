@@ -1,5 +1,4 @@
 const crypto = require('crypto');
-const net = require('net');
 const config = require('../../config');
 
 function sanitizePolicy(policy) {
@@ -35,59 +34,6 @@ function sanitizePolicy(policy) {
       3600000
     ),
   };
-}
-
-function isPrivateOrLocalAddress(hostname) {
-  if (typeof hostname !== 'string') {
-    return true;
-  }
-
-  const normalized = hostname.trim().toLowerCase();
-  if (!normalized) {
-    return true;
-  }
-
-  if (normalized === 'localhost' || normalized === '127.0.0.1' || normalized === '::1') {
-    return true;
-  }
-
-  const version = net.isIP(normalized);
-  if (!version) {
-    return false;
-  }
-
-  if (version === 4) {
-    const [a, b] = normalized.split('.').map((part) => Number.parseInt(part, 10));
-    return isPrivateOrLocalIPv4(a, b);
-  }
-
-  const mappedIPv4 = normalized.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
-  if (mappedIPv4) {
-    return isPrivateOrLocalAddress(mappedIPv4[1]);
-  }
-
-  return (
-    normalized === '::' ||
-    normalized === '::1' ||
-    normalized.startsWith('fe80:') ||
-    normalized.startsWith('fc') ||
-    normalized.startsWith('fd')
-  );
-}
-
-function isPrivateOrLocalIPv4(octetA, octetB) {
-  return (
-    octetA === 0 ||
-    octetA === 10 ||
-    octetA === 127 ||
-    (octetA === 100 && octetB >= 64 && octetB <= 127) ||
-    (octetA === 169 && octetB === 254) ||
-    (octetA === 172 && octetB >= 16 && octetB <= 31) ||
-    (octetA === 192 && octetB === 0) ||
-    (octetA === 192 && octetB === 168) ||
-    (octetA === 198 && (octetB === 18 || octetB === 19)) ||
-    octetA >= 224
-  );
 }
 
 class AgentManagementService {
@@ -204,11 +150,6 @@ class AgentManagementService {
       parsedBaseUrl = new URL(baseUrl);
       if (parsedBaseUrl.protocol !== 'https:') {
         const error = new Error('baseUrl must use https');
-        error.statusCode = 400;
-        throw error;
-      }
-      if (isPrivateOrLocalAddress(parsedBaseUrl.hostname)) {
-        const error = new Error('baseUrl hostname is not allowed');
         error.statusCode = 400;
         throw error;
       }

@@ -259,7 +259,7 @@ test('agent management service rejects endpoint URLs without https', async () =>
   assert.equal(savedEndpoint, null);
 });
 
-test('agent management service rejects localhost endpoint URLs', async () => {
+test('agent management service allows endpoint hostnames and defers DNS safety checks to runtime', async () => {
   let savedEndpoint = null;
   const service = new AgentManagementService({
     secretVault: null,
@@ -276,15 +276,14 @@ test('agent management service rejects localhost endpoint URLs', async () => {
     },
   });
 
-  await assert.rejects(
-    service.configureEndpoint({
-      ownerUserId: 'user-01',
-      agentId: 'agent-01',
-      endpoint: { baseUrl: 'https://localhost:8443/agent' },
-    }),
-    (error) => error && error.statusCode === 400 && /hostname is not allowed/i.test(error.message)
-  );
-  assert.equal(savedEndpoint, null);
+  const configured = await service.configureEndpoint({
+    ownerUserId: 'user-01',
+    agentId: 'agent-01',
+    endpoint: { baseUrl: 'https://localhost:8443/agent' },
+  });
+
+  assert.equal(configured.ok, true);
+  assert.equal(savedEndpoint.baseUrl, 'https://localhost:8443/agent');
 });
 
 test('remote endpoint provider blocks private DNS resolution', async () => {
