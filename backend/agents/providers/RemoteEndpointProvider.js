@@ -119,9 +119,9 @@ class RemoteEndpointProvider extends AgentRuntime {
       let lastError = null;
 
       for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-        await assertHostnameResolvesPublicIp(parsedUrl.hostname);
         let res;
         try {
+          await assertHostnameResolvesPublicIp(parsedUrl.hostname);
           res = await request(url, {
             method: 'POST',
             headers,
