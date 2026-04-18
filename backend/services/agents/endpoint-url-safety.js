@@ -59,26 +59,69 @@ function parseIpv4FromHexHextets(highHextet, lowHextet) {
   ].join('.');
 }
 
-function getEmbeddedIpv4Address(ipv6) {
-  const dottedTailIndex = ipv6.lastIndexOf(':');
-  if (dottedTailIndex >= 0) {
-    const dottedTail = ipv6.slice(dottedTailIndex + 1);
-    if (net.isIP(dottedTail) === 4 && (ipv6.startsWith('::') || ipv6.startsWith('::ffff:'))) {
-      return dottedTail;
+function ipv6ToHextets(ipv6) {
+  const normalized = stripIpv6Brackets(String(ipv6 || '')).toLowerCase();
+  const [headPart, tailPart] = normalized.split('::');
+  if (normalized.split('::').length > 2) {
+    return null;
+  }
+
+  const parsePart = (part) => {
+    if (!part) {
+      return [];
     }
+    return part.split(':').flatMap((segment) => {
+      if (!segment) {
+        return [];
+      }
+      if (segment.includes('.')) {
+        if (net.isIP(segment) !== 4) {
+          return [];
+        }
+        const octets = segment.split('.').map((item) => Number.parseInt(item, 10));
+        return [((octets[0] << 8) | octets[1]).toString(16), ((octets[2] << 8) | octets[3]).toString(16)];
+      }
+      return [segment];
+    });
+  };
+
+  const head = parsePart(headPart);
+  const tail = parsePart(tailPart);
+  const missingCount = 8 - (head.length + tail.length);
+  if (missingCount < 0) {
+    return null;
+  }
+  if (missingCount > 0 && !normalized.includes('::')) {
+    return null;
   }
 
-  const mappedMatch = ipv6.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i);
-  if (mappedMatch) {
-    return parseIpv4FromHexHextets(mappedMatch[1], mappedMatch[2]);
+  return [...head, ...Array(missingCount).fill('0'), ...tail];
+}
+
+function getEmbeddedIpv4Address(ipv6) {
+  const normalizedIpv6 = stripIpv6Brackets(String(ipv6 || '')).toLowerCase();
+  if (net.isIP(normalizedIpv6) !== 6) {
+    return null;
   }
 
-  const compatibleMatch = ipv6.match(/^::([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i);
-  if (compatibleMatch) {
-    return parseIpv4FromHexHextets(compatibleMatch[1], compatibleMatch[2]);
+  const hextets = ipv6ToHextets(normalizedIpv6);
+  if (!Array.isArray(hextets) || hextets.length !== 8) {
+    return null;
   }
 
-  return null;
+  const firstFiveAreZero = hextets.slice(0, 5).every((segment) => Number.parseInt(segment, 16) === 0);
+  if (!firstFiveAreZero) {
+    return null;
+  }
+
+  const markerHextet = Number.parseInt(hextets[5], 16);
+  const isMapped = markerHextet === 0xffff;
+  const isCompatible = markerHextet === 0x0000;
+  if (!isMapped && !isCompatible) {
+    return null;
+  }
+
+  return parseIpv4FromHexHextets(hextets[6], hextets[7]);
 }
 
 function isPrivateIpv6(ip) {

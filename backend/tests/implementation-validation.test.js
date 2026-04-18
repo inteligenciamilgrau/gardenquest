@@ -263,7 +263,9 @@ test('remote endpoint validation rejects local and private IPv6 forms', () => {
     'https://[fec0::1]/internal',
     'https://[::ffff:127.0.0.1]/internal',
     'https://[::ffff:7f00:1]/internal',
+    'https://[0:0:0:0:0:ffff:7f00:1]/internal',
     'https://[::127.0.0.1]/internal',
+    'https://[0:0:0:0:0:0:192.168.0.1]/internal',
   ];
 
   blockedUrls.forEach((url) => {
