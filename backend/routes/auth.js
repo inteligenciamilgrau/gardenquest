@@ -158,7 +158,7 @@ function isLoopbackAddress(value) {
 }
 
 function isDevAuthRequestAllowed(req) {
-  return config.APP_ENV === 'local' && isLoopbackAddress(req.socket?.remoteAddress);
+return config.APP_ENV === 'local' && req.socket && isLoopbackAddress(req.socket.remoteAddress);
 }
 
 function buildCookieOptions({ maxAge = COOKIE_MAX_AGE_MS, path = '/' } = {}) {
