@@ -139,6 +139,28 @@ function getFrontendUrl(path = '') {
   return `${baseUrl}${path}`;
 }
 
+function normalizeRemoteAddress(value) {
+  if (typeof value !== 'string') {
+    return '';
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return '';
+  }
+
+  return trimmed.startsWith('::ffff:') ? trimmed.slice(7) : trimmed;
+}
+
+function isLoopbackAddress(value) {
+  const normalized = normalizeRemoteAddress(value);
+  return normalized === '127.0.0.1' || normalized === '::1';
+}
+
+function isDevAuthRequestAllowed(req) {
+  return config.APP_ENV === 'local' && isLoopbackAddress(req.socket?.remoteAddress);
+}
+
 function buildCookieOptions({ maxAge = COOKIE_MAX_AGE_MS, path = '/' } = {}) {
   return {
     httpOnly: true,
@@ -246,20 +268,19 @@ function createAuthRoutes({ gameEngine = null, worldGateway = null } = {}) {
 
   // ─── Dev-only login (APP_ENV=local) ───────────────────────────
   router.get('/dev-mode', (req, res) => {
-    if (config.APP_ENV !== 'local') {
+    if (!isDevAuthRequestAllowed(req)) {
       return res.status(404).json({ error: 'Not found' });
     }
 
-    const defaultEmail = config.ADMIN_GOOGLE_EMAILS?.[0] || 'dev@localhost';
     return res.json({
       devLoginEnabled: true,
       defaultName: 'Dev User',
-      defaultEmail,
+      defaultEmail: 'dev@localhost',
     });
   });
 
   router.post('/dev-login', express.json(), async (req, res) => {
-    if (config.APP_ENV !== 'local') {
+    if (!isDevAuthRequestAllowed(req)) {
       return res.status(404).json({ error: 'Not found' });
     }
 
