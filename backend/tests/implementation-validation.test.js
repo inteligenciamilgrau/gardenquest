@@ -18,6 +18,7 @@ const { AgentDecisionService } = require('../services/agents/AgentDecisionServic
 const { AgentGovernanceService } = require('../services/agents/AgentGovernanceService');
 const { AgentModerationService } = require('../services/agents/AgentModerationService');
 const { AgentManagementService } = require('../services/agents/AgentManagementService');
+const { validateRemoteEndpointUrl } = require('../services/agents/endpoint-url-safety');
 const { RemoteEndpointProvider } = require('../agents/providers/RemoteEndpointProvider');
 const { WorldEventStreamService } = require('../services/world/WorldEventStreamService');
 const {
@@ -230,6 +231,67 @@ test('openai client falls back to embedded prompt when configured file does not 
     config.OPENAI_NPC_SYSTEM_PROMPT_FILE = previousFile;
   }
 });
+
+test('remote endpoint validation rejects private IP hosts', () => {
+  assert.throws(
+    () => validateRemoteEndpointUrl('https://127.0.0.1/internal'),
+    (error) => error && error.statusCode === 400 && /private|local/i.test(error.message)
+  );
+});
+
+test('remote endpoint validation rejects additional private and local IPv4 ranges', () => {
+  const blockedUrls = [
+    'https://10.1.2.3/internal',
+    'https://192.168.1.50/internal',
+    'https://172.20.10.7/internal',
+    'https://169.254.10.10/internal',
+    'https://100.64.2.12/internal',
+  ];
+
+  blockedUrls.forEach((url) => {
+    assert.throws(
+      () => validateRemoteEndpointUrl(url),
+      (error) => error && error.statusCode === 400 && /private|local/i.test(error.message)
+    );
+  });
+});
+
+test('remote endpoint validation rejects local and private IPv6 forms', () => {
+  const blockedUrls = [
+    'https://[::1]/internal',
+    'https://[fc00::1]/internal',
+    'https://[fd12:3456:789a::1]/internal',
+    'https://[fe90::1]/internal',
+    'https://[fec0::1]/internal',
+    'https://[::ffff:127.0.0.1]/internal',
+    'https://[::ffff:7f00:1]/internal',
+    'https://[0:0:0:0:0:ffff:7f00:1]/internal',
+    'https://[::127.0.0.1]/internal',
+    'https://[0:0:0:0:0:0:192.168.0.1]/internal',
+  ];
+
+  blockedUrls.forEach((url) => {
+    assert.throws(
+      () => validateRemoteEndpointUrl(url),
+      (error) => error && error.statusCode === 400 && /private|local/i.test(error.message)
+    );
+  });
+});
+
+test('remote endpoint validation rejects non-https endpoint URLs', () => {
+  assert.throws(
+    () => validateRemoteEndpointUrl('http://example.com/internal'),
+    (error) => error && error.statusCode === 400 && /https/i.test(error.message)
+  );
+});
+
+test('remote endpoint validation rejects malformed URLs', () => {
+  assert.throws(
+    () => validateRemoteEndpointUrl('not-a-valid-url'),
+    (error) => error && error.statusCode === 400 && /absolute url/i.test(error.message)
+  );
+});
+
 
 test('agent management service rejects endpoint URLs without https', async () => {
   let savedEndpoint = null;
