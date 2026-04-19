@@ -135,7 +135,7 @@ function showLoginOverlay() {
     stopDashboard();
     currentUser = null;
     document.getElementById('authTitle').textContent = 'Painel Restrito';
-    document.getElementById('authCopy').textContent = 'Entre com a conta Google autorizada para acessar o dashboard administrativo.';
+    document.getElementById('authCopy').textContent = 'Acessar o dashboard administrativo.';
     document.getElementById('dashboardLoginBtn').hidden = false;
     document.getElementById('dashboardLogoutBtn').hidden = true;
     document.getElementById('dashboardContainer').style.display = 'none';
@@ -154,12 +154,12 @@ function showForbiddenOverlay(email) {
     const labelEmail = email ? ` (${email})` : '';
 
     document.getElementById('authTitle').textContent = 'Acesso Negado';
-    document.getElementById('authCopy').textContent = `A conta autenticada${labelEmail} nao esta na allowlist administrativa.`;
+    document.getElementById('authCopy').textContent = `Não autorizado.`;
     document.getElementById('dashboardLoginBtn').hidden = true;
     document.getElementById('dashboardLogoutBtn').hidden = false;
     document.getElementById('dashboardContainer').style.display = 'none';
     document.getElementById('authOverlay').style.display = 'flex';
-    showAuthError('Use a conta Google autorizada para entrar.');
+    showAuthError('Acesso não autorizado.');
     window.requestAnimationFrame(() => {
         const switchAccountButton = document.getElementById('dashboardLogoutBtn');
         if (switchAccountButton && !switchAccountButton.hidden) {
