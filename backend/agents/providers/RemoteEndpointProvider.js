@@ -1,3 +1,5 @@
+const dns = require('dns').promises;
+const net = require('net');
 const { request } = require('undici');
 const { AgentRuntime } = require('../contracts/AgentRuntime');
 const { normalizeLegacyDecision } = require('../schemas/agent-action');
@@ -116,6 +118,7 @@ class RemoteEndpointProvider extends AgentRuntime {
       Math.min(2000, 220 * 2 ** (attempt - 1)) + Math.floor(Math.random() * 120);
 
     return (async () => {
+      await this.assertPublicHostname(parsedUrl.hostname);
       let lastError = null;
 
       for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
@@ -166,6 +169,78 @@ class RemoteEndpointProvider extends AgentRuntime {
       throw lastError || new Error('Remote endpoint request failed');
     })();
   }
+
+  async assertPublicHostname(hostname) {
+    if (isPrivateOrLocalAddress(hostname)) {
+      const error = new Error('Remote endpoint hostname is not allowed');
+      error.code = 'endpoint_private_host';
+      throw error;
+    }
+
+    const results = await dns.lookup(hostname, { all: true });
+    if (!Array.isArray(results) || results.length === 0) {
+      const error = new Error('Remote endpoint hostname did not resolve');
+      error.code = 'endpoint_dns_unresolved';
+      throw error;
+    }
+
+    for (const result of results) {
+      if (isPrivateOrLocalAddress(result.address)) {
+        const error = new Error('Remote endpoint resolved to a private address');
+        error.code = 'endpoint_private_address';
+        throw error;
+      }
+    }
+  }
+}
+
+function isPrivateOrLocalAddress(hostname) {
+  if (typeof hostname !== 'string') {
+    return true;
+  }
+
+  const normalized = hostname.trim().toLowerCase();
+  if (!normalized) {
+    return true;
+  }
+
+  if (normalized === 'localhost' || normalized === '127.0.0.1' || normalized === '::1') {
+    return true;
+  }
+
+  const version = net.isIP(normalized);
+  if (!version) {
+    return false;
+  }
+
+  if (version === 4) {
+    const [a, b] = normalized.split('.').map((part) => Number.parseInt(part, 10));
+    return (
+      a === 0 ||
+      a === 10 ||
+      a === 127 ||
+      (a === 100 && b >= 64 && b <= 127) ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 0) ||
+      (a === 192 && b === 168) ||
+      (a === 198 && (b === 18 || b === 19)) ||
+      a >= 224
+    );
+  }
+
+  const mappedIPv4 = normalized.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
+  if (mappedIPv4) {
+    return isPrivateOrLocalAddress(mappedIPv4[1]);
+  }
+
+  return (
+    normalized === '::' ||
+    normalized === '::1' ||
+    normalized.startsWith('fe80:') ||
+    normalized.startsWith('fc') ||
+    normalized.startsWith('fd')
+  );
 }
 
 module.exports = { RemoteEndpointProvider };
