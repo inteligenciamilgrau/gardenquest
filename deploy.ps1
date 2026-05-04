@@ -80,6 +80,7 @@ if ($EnvFile) {
             if ($name -eq "GOOGLE_CLIENT_SECRET_SECRET_NAME" -and -not $GoogleClientSecretSecretName) { $GoogleClientSecretSecretName = $value }
             if ($name -eq "GOOGLE_CLIENT_SECRET_SECRET_VERSION" -and -not $GoogleClientSecretSecretVersion) { $GoogleClientSecretSecretVersion = $value }
             if ($name -eq "BACKEND_SERVICE_NAME" -and -not $BackendServiceName) { $BackendServiceName = $value }
+            if ($name -eq "FRONTEND_URL" -and -not $FrontendUrl) { $FrontendUrl = $value }
             if ($name -eq "FRONTEND_SERVICE_NAME" -and -not $FrontendServiceName) { $FrontendServiceName = $value }
         }
     }
@@ -123,7 +124,8 @@ Write-Host "----------------------------------"
 gcloud config set project $ProjectId
 
 $BackendUrl = ""
-$FrontendUrl = ""
+# fronturl setado manualmente no env
+#$FrontendUrl = ""
 
 if ($Target -eq "all" -or $Target -eq "backend") {
     Write-Host ""
@@ -248,7 +250,9 @@ gcloud run deploy $FrontendServiceName `
     --max-instances 5 `
     --set-env-vars $FrontendEnvVars
 
-    $FrontendUrl = gcloud run services describe $FrontendServiceName --region $Region --format='value(status.url)'
+    ### $FrontendUrl = gcloud run services describe $FrontendServiceName --region $Region --format='value(status.url)'
+    # FrontEnd passou a trabalhar direto no CloudFlare
+    
     Write-Host "Frontend: $FrontendUrl"
     Pop-Location
 } else {
