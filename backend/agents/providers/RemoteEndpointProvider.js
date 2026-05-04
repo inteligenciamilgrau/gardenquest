@@ -1,9 +1,12 @@
 const dns = require('dns').promises;
-const net = require('net');
 const { request } = require('undici');
 const { AgentRuntime } = require('../contracts/AgentRuntime');
 const { normalizeLegacyDecision } = require('../schemas/agent-action');
-const { validateRemoteEndpointUrl, assertHostnameResolvesPublicIp } = require('../../services/agents/endpoint-url-safety');
+const {
+  validateRemoteEndpointUrl,
+  assertHostnameResolvesPublicIp,
+  isPrivateIpAddress,
+} = require('../../services/agents/endpoint-url-safety');
 
 class RemoteEndpointProvider extends AgentRuntime {
   constructor({ agentRepository, secretVault = null, logger = console } = {}) {
@@ -204,43 +207,7 @@ function isPrivateOrLocalAddress(hostname) {
     return true;
   }
 
-  if (normalized === 'localhost' || normalized === '127.0.0.1' || normalized === '::1') {
-    return true;
-  }
-
-  const version = net.isIP(normalized);
-  if (!version) {
-    return false;
-  }
-
-  if (version === 4) {
-    const [a, b] = normalized.split('.').map((part) => Number.parseInt(part, 10));
-    return (
-      a === 0 ||
-      a === 10 ||
-      a === 127 ||
-      (a === 100 && b >= 64 && b <= 127) ||
-      (a === 169 && b === 254) ||
-      (a === 172 && b >= 16 && b <= 31) ||
-      (a === 192 && b === 0) ||
-      (a === 192 && b === 168) ||
-      (a === 198 && (b === 18 || b === 19)) ||
-      a >= 224
-    );
-  }
-
-  const mappedIPv4 = normalized.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
-  if (mappedIPv4) {
-    return isPrivateOrLocalAddress(mappedIPv4[1]);
-  }
-
-  return (
-    normalized === '::' ||
-    normalized === '::1' ||
-    normalized.startsWith('fe80:') ||
-    normalized.startsWith('fc') ||
-    normalized.startsWith('fd')
-  );
+  return normalized === 'localhost' || isPrivateIpAddress(normalized);
 }
 
 module.exports = { RemoteEndpointProvider };

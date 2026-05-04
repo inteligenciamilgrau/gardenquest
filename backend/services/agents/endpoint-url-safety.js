@@ -208,4 +208,5 @@ async function assertHostnameResolvesPublicIp(hostname) {
 module.exports = {
   validateRemoteEndpointUrl,
   assertHostnameResolvesPublicIp,
+  isPrivateIpAddress,
 };

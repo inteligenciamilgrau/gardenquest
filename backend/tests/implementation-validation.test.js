@@ -374,6 +374,32 @@ test('remote endpoint provider blocks private DNS resolution', async () => {
   }
 });
 
+test('remote endpoint provider blocks hex-form IPv4-mapped IPv6 DNS resolution', async () => {
+  const originalLookup = dns.lookup;
+  dns.lookup = async () => [{ address: '::ffff:7f00:1', family: 6 }];
+
+  const provider = new RemoteEndpointProvider({
+    agentRepository: {},
+  });
+
+  try {
+    await assert.rejects(
+      provider.postJson({
+        endpoint: {
+          baseUrl: 'https://example.com/agent',
+          authMode: 'none',
+          authSecret: null,
+        },
+        payload: { observation: {} },
+        timeoutMs: 500,
+      }),
+      (error) => error && error.code === 'endpoint_private_address'
+    );
+  } finally {
+    dns.lookup = originalLookup;
+  }
+});
+
 test('agent management service stores bearer endpoint secret as encrypted payload', async () => {
   let savedEndpoint = null;
   const vault = new SecretVault({
