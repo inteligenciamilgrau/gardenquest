@@ -24,6 +24,9 @@ const {
 
 const app = express();
 
+// Security middleware (MUST be first)
+setupSecurity(app);
+
 // SecretVault initialization (optional in local, required in production)
 const secretVault = createRuntimeSecretVault({
   agentRepository,
@@ -107,8 +110,6 @@ app.get('/', (req, res) => {
   res.json({ message: 'IMG Backend Root', status: 'ready' });
 });
 
-// Security middleware
-setupSecurity(app);
 
 // Body parser
 app.use(express.json({ limit: '16kb' }));

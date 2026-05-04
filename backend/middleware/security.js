@@ -116,14 +116,17 @@ function setupSecurity(app) {
   // Helmet - Security headers (CSP, HSTS, X-Frame-Options, etc.)
   app.use(
     helmet({
-      hsts: config.NODE_ENV === 'production', // Disable HSTS in development (avoids 426/HTTPS issues)
+      hsts: config.NODE_ENV === 'production',
       contentSecurityPolicy: {
         directives: {
-          defaultSrc: ["'self'"],
-          scriptSrc: ["'self'"],
-          styleSrc: ["'self'", "'unsafe-inline'"],
-          imgSrc: ["'self'", 'data:', 'https:'],
-          connectSrc: cspConnectSrc,
+          defaultSrc: ["'none'"],
+          connectSrc: ["'self'", ...cspConnectSrc],
+          frameAncestors: ["'none'"],
+          objectSrc: ["'none'"],
+          scriptSrc: ["'none'"],
+          styleSrc: ["'none'"],
+          imgSrc: ["'none'"],
+          upgradeInsecureRequests: [],
         },
       },
       crossOriginEmbedderPolicy: false,

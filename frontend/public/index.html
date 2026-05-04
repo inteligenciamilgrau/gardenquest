@@ -50,20 +50,20 @@
             </button>
 
             <!-- Dev Login (only visible when APP_ENV=local) -->
-            <div id="devLoginSection" style="display:none;">
-                <div style="display:flex; align-items:center; gap:8px; margin:16px 0 12px;">
-                    <div style="flex:1; height:1px; background:rgba(255,255,255,.12);"></div>
-                    <span style="color:#6ee7b7; font-size:.8rem; font-weight:600; text-transform:uppercase; letter-spacing:.08em;">Dev Mode</span>
-                    <div style="flex:1; height:1px; background:rgba(255,255,255,.12);"></div>
+            <div id="devLoginSection" class="hidden">
+                <div class="dev-login-divider">
+                    <div class="dev-login-divider-line"></div>
+                    <span class="dev-login-tag">Dev Mode</span>
+                    <div class="dev-login-divider-line"></div>
                 </div>
-                <input type="text" id="devName" placeholder="Nome" style="width:100%; padding:10px 14px; margin-bottom:8px; border-radius:8px; border:1px solid rgba(255,255,255,.15); background:rgba(255,255,255,.06); color:#e2e8f0; font-family:inherit; font-size:.95rem; box-sizing:border-box;">
-                <input type="email" id="devEmail" placeholder="Email" style="width:100%; padding:10px 14px; margin-bottom:12px; border-radius:8px; border:1px solid rgba(255,255,255,.15); background:rgba(255,255,255,.06); color:#e2e8f0; font-family:inherit; font-size:.95rem; box-sizing:border-box;">
-                <button id="devLoginBtn" type="button" style="width:100%; padding:12px; border:none; border-radius:10px; background:linear-gradient(135deg, #10b981, #059669); color:#fff; font-family:inherit; font-size:1rem; font-weight:600; cursor:pointer; transition:opacity .2s;">
+                <input type="text" id="devName" placeholder="Nome" class="dev-input">
+                <input type="email" id="devEmail" placeholder="Email" class="dev-input">
+                <button id="devLoginBtn" type="button" class="dev-submit-btn">
                     🔧 Entrar como Dev
                 </button>
             </div>
 
-            <p class="error-msg" id="errorMsg" style="display:none;"></p>
+            <p class="error-msg hidden" id="errorMsg"></p>
         </div>
 
         <p class="footer">Plataforma de jogos com Three.js e backend compartilhado</p>
@@ -71,142 +71,7 @@
 
     <script src="js/config.js?v=14"></script>
     <script src="shared/js/auth.js?v=1"></script>
-    <script>
-        const params = new URLSearchParams(window.location.search);
-        const HUB_PATH = '/hub.html';
+    <script src="js/login.js"></script>
 
-        function normalizeApiForRedirect(value) {
-            if (typeof value !== 'string' || !value.trim()) {
-                return '';
-            }
-
-            try {
-                const parsed = new URL(value.trim(), window.location.origin);
-                if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-                    return '';
-                }
-                return parsed.origin;
-            } catch (error) {
-                return '';
-            }
-        }
-
-        function resolveHubRedirectPath() {
-            const explicitApi = normalizeApiForRedirect(params.get('api'));
-            const apiOrigin = explicitApi || normalizeApiForRedirect(window.API_URL);
-            if (!apiOrigin || apiOrigin === window.location.origin) {
-                return HUB_PATH;
-            }
-            return `${HUB_PATH}?api=${encodeURIComponent(apiOrigin)}`;
-        }
-
-        const hubRedirectPath = resolveHubRedirectPath();
-        const googleLoginBtn = document.getElementById('googleLoginBtn');
-        googleLoginBtn?.addEventListener('click', () => {
-            loginWithGoogle(hubRedirectPath);
-        });
-
-        (async function init() {
-            // Heartbeat with Freeze Detector
-            let lastPulse = Date.now();
-            setInterval(() => {
-                const now = Date.now();
-                const gap = now - lastPulse;
-                if (gap > 2000) {
-                    console.warn(`[LOGIN-FREEZE-DETECTOR] ⚠️ UI Thread blocked for ${gap}ms!`);
-                }
-                lastPulse = now;
-
-                let jsHeap = 'N/A';
-                if (window.performance && window.performance.memory) {
-                    const mem = window.performance.memory;
-                    jsHeap = `${(mem.usedJSHeapSize / 1024 / 1024).toFixed(2)}MB / ${(mem.totalJSHeapSize / 1024 / 1024).toFixed(2)}MB`;
-                }
-                console.log(`[LOGIN-HEARTBEAT] 🕒 Alive at ${new Date().toLocaleTimeString()} | 🧠 Memory: ${jsHeap}`);
-            }, 1000);
-
-            // Check if we just bounced from the hub in a loop
-            const loopKey = `platform_auth_redirect:${HUB_PATH}`;
-            const lastRedirect = Number(sessionStorage.getItem(loopKey)) || 0;
-            const now = Date.now();
-
-            console.info('[Login] Initialization starting...', {
-                lastHubRedirect: lastRedirect ? new Date(lastRedirect).toLocaleTimeString() : 'none',
-                time: new Date().toLocaleTimeString()
-            });
-
-            console.debug('[Login] Checking authentication...');
-            const user = await checkAuth();
-            
-            if (user && !user.error) {
-                console.info('[Login] User already authenticated:', user.name);
-                // If we were just redirected here due to a 401 on the hub within 10s,
-                // but checkAuth thinks we are OK, there is a sync issue.
-                // Stop the loop and show error.
-                if (now - lastRedirect < 10000) {
-                    console.error('[Login] Sync issue: checkAuth succeeded but hub auth failed just now.');
-                    const errorMsg = document.getElementById('errorMsg');
-                    if (errorMsg) {
-                        errorMsg.textContent = 'Erro de sincronizacao de sessao. Limpe o cache do navegador.';
-                        errorMsg.style.display = 'block';
-                    }
-                    return;
-                }
-                console.info('[Login] Redirecting to Hub.');
-                window.location.replace(hubRedirectPath);
-            } else {
-                console.debug('[Login] No valid session found. Ready for user interaction.');
-            }
-        })();
-
-        if (params.get('error')) {
-            const errorMsg = document.getElementById('errorMsg');
-            errorMsg.textContent = 'Erro ao fazer login. Tente novamente.';
-            errorMsg.style.display = 'block';
-        }
-
-        // Dev login initialization
-        (async function initDevLogin() {
-            const devMode = await checkDevMode();
-            if (!devMode?.devLoginEnabled) {
-                return;
-            }
-
-            const devSection = document.getElementById('devLoginSection');
-            const devNameInput = document.getElementById('devName');
-            const devEmailInput = document.getElementById('devEmail');
-            const devLoginBtn = document.getElementById('devLoginBtn');
-
-            if (!devSection || !devNameInput || !devEmailInput || !devLoginBtn) {
-                return;
-            }
-
-            devNameInput.value = devMode.defaultName || 'Dev User';
-            devEmailInput.value = devMode.defaultEmail || 'dev@localhost';
-            devSection.style.display = 'block';
-
-            devLoginBtn.addEventListener('click', async () => {
-                devLoginBtn.disabled = true;
-                devLoginBtn.textContent = '⏳ Entrando...';
-
-                const result = await loginAsDev(
-                    devNameInput.value.trim(),
-                    devEmailInput.value.trim()
-                );
-
-                if (result?.ok) {
-                    window.location.replace(result.redirectTo || '/hub.html');
-                } else {
-                    devLoginBtn.disabled = false;
-                    devLoginBtn.textContent = '🔧 Entrar como Dev';
-                    const errorMsg = document.getElementById('errorMsg');
-                    if (errorMsg) {
-                        errorMsg.textContent = 'Erro no login dev. Verifique o backend.';
-                        errorMsg.style.display = 'block';
-                    }
-                }
-            });
-        })();
-    </script>
 </body>
 </html>

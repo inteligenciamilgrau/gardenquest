@@ -22,6 +22,7 @@ frontend/.npm-cache/
 !.env.local.example
 !.env.staging.example
 !.env.production.example
+venv/
 
 # IDE and OS
 .vscode/

@@ -10,6 +10,11 @@
     --google-bg: #ffffff;
     --google-text: #1f2937;
     --error: #f87171;
+    --accent-glow: rgba(56, 189, 126, 0.4);
+}
+
+.hidden {
+    display: none !important;
 }
 
 /* ─── Reset ─── */
@@ -375,4 +380,61 @@ body.ops-modal-open {
     .ops-modal-btn {
         width: 100%;
     }
+}
+/* ─── Dev Login Section ─── */
+.dev-login-divider {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 16px 0 12px;
+}
+
+.dev-login-divider-line {
+    flex: 1;
+    height: 1px;
+    background: rgba(255, 255, 255, .12);
+}
+
+.dev-login-tag {
+    color: #6ee7b7;
+    font-size: .8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+}
+
+.dev-input {
+    width: 100%;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, .15);
+    background: rgba(255, 255, 255, .06);
+    color: #e2e8f0;
+    font-family: inherit;
+    font-size: .95rem;
+    box-sizing: border-box;
+}
+
+#devEmail {
+    margin-bottom: 12px;
+}
+
+.dev-submit-btn {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: #fff;
+    font-family: inherit;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity .2s;
+}
+
+.dev-submit-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
 }
